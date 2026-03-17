@@ -1,96 +1,156 @@
 import threading
-import time
 import queue
-from typing import Dict, Any, Callable
+from typing import Dict, Any, Optional
 from src.agent.core import LiuClawAgent
 from src.models.mutator import TopologicalMutator
-from src.engine.queues import context_queue, decision_queue
+from src.engine.queues import (
+    reflex_queue, strategic_queue,
+    reflex_decision_queue, strategic_decision_queue,
+)
+
 
 class EngineCoordinator:
     """
-    Coordinates the async interaction between the PyTorch KAN training loop
-    and the LiuClaw agent.
+    Dual-process coordinator for the async interaction between the PyTorch KAN
+    training loop and the LiuClaw agent.
+
+    System 1 (reflex / fast): handles edge pruning and LR adjustments.
+    System 2 (strategic / slow): handles deliberate topological mutations and
+                                  regime analysis.
     """
+
     def __init__(self, agent: LiuClawAgent):
         self.agent = agent
         self.running = False
-        self.agent_thread = None
+        self._system_1_thread: Optional[threading.Thread] = None
+        self._system_2_thread: Optional[threading.Thread] = None
 
-    def start_agent_thread(self):
-        """Starts the background thread for the agent's reasoning loop."""
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def start_threads(self):
+        """Starts the System 1 (reflex) and System 2 (strategic) worker threads."""
         self.running = True
-        self.agent_thread = threading.Thread(target=self._agent_worker, daemon=True)
-        self.agent_thread.start()
+        self._system_1_thread = threading.Thread(
+            target=self._system_1_worker, daemon=True, name="system_1_reflex"
+        )
+        self._system_2_thread = threading.Thread(
+            target=self._system_2_worker, daemon=True, name="system_2_strategic"
+        )
+        self._system_1_thread.start()
+        self._system_2_thread.start()
 
-    def stop_agent_thread(self):
-        """Stops the agent worker."""
+    def stop_threads(self):
+        """Stops both worker threads gracefully."""
         self.running = False
-        if self.agent_thread:
-            self.agent_thread.join(timeout=1.0)
+        if self._system_1_thread:
+            self._system_1_thread.join(timeout=2.0)
+        if self._system_2_thread:
+            self._system_2_thread.join(timeout=2.0)
 
-    def _agent_worker(self):
-        """Worker function for the agent reasoning loop."""
+    # ------------------------------------------------------------------
+    # Worker loops
+    # ------------------------------------------------------------------
+
+    def _system_1_worker(self):
+        """Fast-path worker: calls agent.think_fast() and posts a ReflexDecision."""
         while self.running:
             try:
-                # Wait for new context (non-blocking with timeout to allow exit)
-                context = context_queue.get(timeout=0.1)
-                
-                # Unpack context (kan_state, pipeline_health)
-                kan_state, pipeline_health = context
-                
-                # Perform reasoning (slow call to LLM)
-                decision = self.agent.decide_mutations(kan_state, pipeline_health)
-                
-                # Push decision to the queue
-                decision_queue.put(decision)
-                
-                context_queue.task_done()
+                context = reflex_queue.get(timeout=0.1)
+                step, edge_stats, loss_delta = context
+                decision = self.agent.think_fast(step, edge_stats, loss_delta)
+                reflex_decision_queue.put(decision)
+                reflex_queue.task_done()
             except queue.Empty:
                 continue
             except Exception as e:
-                print(f"Error in agent worker thread: {e}")
+                print(f"[system_1] Error: {e}")
 
-    @staticmethod
-    def apply_pending_mutations(model: Any):
-        """Checks the decision queue and applies any pending mutations."""
-        while not decision_queue.empty():
+    def _system_2_worker(self):
+        """Slow-path worker: calls agent.think_slow() and posts a StrategicDecision."""
+        while self.running:
             try:
-                decision = decision_queue.get_nowait()
-                
-                if decision.training_command == "HALT":
-                    print("🚨 LiuClaw HALT command received! Terminating training loop.")
-                    return "HALT"
+                context = strategic_queue.get(timeout=0.1)
+                history, regime_data, model_state = context
+                decision = self.agent.think_slow(history, regime_data, model_state)
+                strategic_decision_queue.put(decision)
+                strategic_queue.task_done()
+            except queue.Empty:
+                continue
+            except Exception as e:
+                print(f"[system_2] Error: {e}")
 
-                print(f"Applying mutations from agent. Reasoning: {decision.reasoning}")
-                
-                for mutation in decision.mutations:
-                    status = TopologicalMutator.mutate_edge(
-                        model, 
-                        mutation.edge_id, 
-                        mutation.action, 
-                        mutation.formula,
-                        mutation.initial_params
-                    )
-                    print(f"Mutation status: {status}")
-                
-                if decision.regime_analysis.hmm_transition_detected:
-                    print(f"🚨 Regime Shift Detected: {decision.regime_analysis.predicted_regime}!")
-                    print(f"Thesis: {decision.regime_analysis.thesis_statement}")
+    # ------------------------------------------------------------------
+    # Submission helpers
+    # ------------------------------------------------------------------
 
-                decision_queue.task_done()
+    def request_reflex(self, step: int, edge_stats: Dict[str, Any], loss_delta: float):
+        """Submits a reflex (System 1) context for processing."""
+        if reflex_queue.full():
+            try:
+                reflex_queue.get_nowait()
+            except queue.Empty:
+                pass
+        reflex_queue.put((step, edge_stats, loss_delta))
+
+    def request_strategic(
+        self,
+        history: Dict[str, Any],
+        regime_data: Dict[str, Any],
+        model_state: Dict[str, Any],
+    ):
+        """Submits a strategic (System 2) context for processing."""
+        if strategic_queue.full():
+            try:
+                strategic_queue.get_nowait()
+            except queue.Empty:
+                pass
+        strategic_queue.put((history, regime_data, model_state))
+
+    # ------------------------------------------------------------------
+    # Apply mutations
+    # ------------------------------------------------------------------
+
+    def apply_pending_mutations(self, model: Any, optimizer=None) -> str:
+        """
+        Drains both decision queues and applies any pending mutations to *model*.
+        Returns "HALT" if a StrategicDecision requests it, otherwise "CONTINUE".
+        """
+        # --- System 1 (reflex) decisions ---
+        while not reflex_decision_queue.empty():
+            try:
+                decision = reflex_decision_queue.get_nowait()
+                for edge_id in decision.prunes:
+                    TopologicalMutator.mutate_edge(model, edge_id, "PRUNE")
+                if optimizer is not None and decision.lr_adjustment != 1.0:
+                    for param_group in optimizer.param_groups:
+                        param_group["lr"] *= decision.lr_adjustment
+                reflex_decision_queue.task_done()
             except queue.Empty:
                 break
             except Exception as e:
-                print(f"Failed to apply mutation: {e}")
-        return "CONTINUE"
+                print(f"[apply_reflex] Failed: {e}")
 
-    @staticmethod
-    def request_mutation(kan_state: Dict[str, Any], pipeline_health: Dict[str, Any]):
-        """Submits context to the agent for decision making."""
-        if context_queue.full():
+        # --- System 2 (strategic) decisions ---
+        while not strategic_decision_queue.empty():
             try:
-                context_queue.get_nowait()
+                decision = strategic_decision_queue.get_nowait()
+                if decision.training_command == "HALT":
+                    print("LiuClaw HALT command received! Terminating training loop.")
+                    return "HALT"
+                for mutation in decision.mutations:
+                    TopologicalMutator.mutate_edge(
+                        model,
+                        mutation.edge_id,
+                        mutation.action,
+                        mutation.formula,
+                        mutation.initial_params,
+                    )
+                strategic_decision_queue.task_done()
             except queue.Empty:
-                pass
-        
-        context_queue.put((kan_state, pipeline_health))
+                break
+            except Exception as e:
+                print(f"[apply_strategic] Failed: {e}")
+
+        return "CONTINUE"
