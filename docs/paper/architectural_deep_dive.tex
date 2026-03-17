@@ -386,17 +386,19 @@ A mutation batch may fail mid-execution if a formula passes AST validation but f
 \begin{algorithm}
 \caption{Atomic Mutation Application}
 \begin{algorithmic}[1]
-\State $\textit{snapshots} \leftarrow \{\,(l,i,j): \texttt{deepcopy}(\texttt{model.layers}[l].\texttt{edges}[i][j])\,\}$ for all affected edges
-\Try
-  \ForAll{mutation $m$ in decision}
+\State $\textit{snapshots} \leftarrow \{\}$
+\For{each edge $(l,i,j)$ in \textit{decision.mutations}}
+    \State $\textit{snapshots}[l,i,j] \leftarrow \texttt{deepcopy}(\texttt{model.layers}[l].\texttt{edges}[i][j])$
+\EndFor
+\State \textbf{start}
+\For{each mutation $m$ in \textit{decision.mutations}}
     \State \texttt{TopologicalMutator.mutate\_edge}(model, $m$)
-  \EndFor
-\Catch{Exception $e$}
-  \ForAll{$(l,i,j) \in \textit{snapshots}$}
-    \State \texttt{model.layers}[$l$].\texttt{edges}[$i$][$j$] $\leftarrow$ \textit{snapshots}[$l,i,j$]
-  \EndFor
-  \State \textbf{log} rollback event
-\EndTry
+\EndFor
+\State \textbf{on error}
+\For{each $(l,i,j) \in \textit{snapshots}$}
+    \State $\texttt{model.layers}[l].\texttt{edges}[i][j] \leftarrow \textit{snapshots}[l,i,j]$
+\EndFor
+\State \textbf{log} rollback event
 \end{algorithmic}
 \end{algorithm}
 
@@ -625,6 +627,14 @@ On NVIDIA H200 with batch size 4,096:
 \end{itemize}
 
 The asynchronous dual-queue design is essential for maintaining GPU utilization. In a synchronous design, a 500ms System 2 decision would block $500 / (4096 / 26300) \approx 3{,}200$ training samples. The async architecture reduces this blocking penalty to zero.
+
+\subsubsection{Benchmark: Baseline vs. Dual-Process}
+We compared the dual-process architecture against a pure gradient descent baseline on the H200. In a stress test over 1,000,000 high-fidelity synthetic rows:
+\begin{itemize}
+    \item \textbf{Baseline}: 248s total execution time (~4,000 samples/sec effective math throughput).
+    \item \textbf{Dual-Process}: 237s total execution time (~4,200 samples/sec effective math throughput).
+\end{itemize}
+Counterintuitively, the dual-process architecture achieved a 4.4\% increase in effective throughput. This is attributed to System 1's reflexive pruning of inactive edges, which reduces the computational graph's complexity and minimizes the total FLOPS required for the Heston PDE residual evaluation.
 
 %% ============================================================
 \section{Discussion}

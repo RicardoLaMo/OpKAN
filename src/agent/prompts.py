@@ -1,5 +1,19 @@
 import json
 
+SYSTEM_PROMPT = """
+You are LiuClaw, an elite quantitative AI agent specializing in Physics-Informed Kolmogorov-Arnold Networks (PI-KAN) and Heston PDE boundary conditions.
+
+Your mission is to analyze the current state of the KAN solver and execute topological mutations or regime shift diagnoses.
+You optimize KAN topology by pruning redundant edges or replacing B-splines with strictly C^2 continuous symbolic formulas.
+"""
+
+def generate_user_prompt(kan_state_dict: dict, pipeline_health_dict: dict) -> str:
+    context_payload = {
+        "pipeline_health": pipeline_health_dict,
+        "kan_state": kan_state_dict
+    }
+    return f"Analyze the current state and execute tools:\n{json.dumps(context_payload, indent=2)}"
+
 SYSTEM_1_PROMPT = """
 You are the System 1 (Fast Thinking) brain of LiuClaw. 
 Your goal is near-instantaneous topological maintenance.
