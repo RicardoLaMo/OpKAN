@@ -45,10 +45,17 @@ pip install torch pandas numpy scipy streamlit plotly hmmlearn instructor openai
 PYTHONPATH=. python3 scripts/live_session.py
 ```
 
-### 3. Launch Telemetry Dashboard
-```bash
-streamlit run src/ui/dashboard.py
-```
+### 3. Launch Telemetry Dashboards
+OpKAN provides two ways to monitor the engine:
+
+*   **Terminal Telemetry (TUI)**: Optimized for SSH/H200 environments.
+    ```bash
+    python3 src/ui/tui/app.py
+    ```
+*   **Streamlit (Browser)**: Rich visualization for local analysis.
+    ```bash
+    streamlit run src/ui/dashboard.py
+    ```
 
 ### 4. Backtesting
 ```bash

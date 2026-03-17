@@ -725,6 +725,22 @@ The experimental progression suggests a clear technical roadmap.
 \textbf{(7) Asset-specific feature enrichment.} The heterogeneous cross-asset results point directly to the missing features. For SOXX and XLK, adding earnings-surprise features, export-control event indicators, and AI capex indices as HMM inputs is likely to shift the best model family from RF-direct toward the hybrid.
 
 %% ============================================================
+\section{Visualization and Telemetry}
+\label{sec:telemetry}
+
+OpKAN provides a comprehensive telemetry suite to ensure that both mathematical convergence and agent reasoning are transparent to researchers.
+
+\subsection{Terminal User Interface (TUI)}
+For high-performance monitoring in SSH-constrained environments (such as remote H200 clusters), OpKAN implements a high-fidelity Terminal User Interface built with \texttt{Textual} and \texttt{Rich}. The TUI provides:
+\begin{itemize}
+    \item \textbf{Real-time Math Stats}: Live line charts for PDE residual and boundary condition loss convergence using \texttt{plotext}.
+    \item \textbf{reasoning Stream}: A scrolling log of the LiuClaw agent's System 1 and System 2 decisions, allowing for immediate auditing of topological mutations.
+    \item \textbf{H200 Throughput}: Instantaneous tracking of training samples per second and GPU utilization.
+\end{itemize}
+
+\subsection{Streamlit Dashboard}
+Complementing the TUI, a web-based Streamlit dashboard provides rich visualizations of the volatility surface, KAN activation maps, and HMM state transitions. This dual-interface approach ensures that OpKAN remains auditable regardless of whether it is being managed from a web browser or a terminal.
+
 \section{Conclusion}
 \label{sec:conclusion}
 %% ============================================================
