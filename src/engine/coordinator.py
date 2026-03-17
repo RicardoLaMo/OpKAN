@@ -160,18 +160,17 @@ class EngineCoordinator:
             try:
                 decision = reflex_decision_queue.get_nowait()
                 print(f"⚡ Reflexive Action: {decision.reasoning}")
-                for edge_id in decision.prunes:
+                for edge_id in (getattr(decision, "prunes", []) or []):
                     TopologicalMutator.mutate_edge(model, edge_id, "PRUNE")
-                if optimizer and decision.lr_adjustment != 1.0:
+                if optimizer and getattr(decision, "lr_adjustment", 1.0) != 1.0:
+                    lr_adj = decision.lr_adjustment
                     for pg in optimizer.param_groups:
-                        pg["lr"] *= decision.lr_adjustment
-                    print(f"Reflex LR adjustment: x{decision.lr_adjustment:.4f}")
+                        pg["lr"] *= lr_adj
+                    print(f"Reflex LR adjustment: x{lr_adj:.4f}")
                 reflex_decision_queue.task_done()
             except queue.Empty: break
 
         # 2. Process Strategic (Slow) / Legacy Decisions
-        # Strategic and legacy use similar mutation logic, strategic adds atomic rollback
-        
         # Helper to apply mutations with rollback
         def _apply_mutations_safe(mutations):
             if not mutations: return
@@ -212,9 +211,9 @@ class EngineCoordinator:
         while not decision_queue.empty():
             try:
                 decision = decision_queue.get_nowait()
-                if decision.training_command == "HALT": return "HALT"
+                if getattr(decision, "training_command", "CONTINUE") == "HALT": return "HALT"
                 print(f"Applying legacy mutations. Reasoning: {decision.reasoning}")
-                _apply_mutations_safe(decision.mutations)
+                _apply_mutations_safe(getattr(decision, "mutations", []))
                 decision_queue.task_done()
             except queue.Empty: break
             

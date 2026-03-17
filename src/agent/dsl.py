@@ -55,3 +55,22 @@ class LiuClawDecision(BaseModel):
     strategic: Optional[StrategicDecision] = None
     reflex: Optional[ReflexDecision] = None
     confidence: float = Field(default=1.0, ge=0.0, le=1.0, description="Confidence score for the overall decision.")
+
+
+class ReflexDecision(BaseModel):
+    """
+    Fast-path (think_fast) response for low-latency pruning and LR adjustments.
+    """
+    reasoning: str = Field(..., description="Brief justification for the reflex action.")
+    prunes: List[str] = Field(default_factory=list, description="List of edge IDs to prune immediately.")
+    lr_adjustment: float = Field(default=1.0, description="Multiplicative factor to apply to the current learning rate.")
+
+
+class StrategicDecision(BaseModel):
+    """
+    Slow-path (think_slow) response for full topological mutation and regime analysis.
+    """
+    reasoning: str = Field(..., description="Overall reasoning for the proposed mutations and regime analysis.")
+    mutations: List[EdgeMutation] = Field(default_factory=list, description="List of topological optimizations for the KAN.")
+    regime_analysis: RegimeThesis = Field(..., description="The agent's analysis of market regime shifts.")
+    training_command: Literal["CONTINUE", "HALT"] = Field(default="CONTINUE", description="HALT only if arbitrage violations or severe data corruption is detected.")
