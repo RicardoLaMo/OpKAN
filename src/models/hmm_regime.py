@@ -1,5 +1,10 @@
+import warnings
+import logging
 from hmmlearn.hmm import GaussianHMM
 import numpy as np
+
+logger = logging.getLogger(__name__)
+
 
 class RegimeHMM:
     """
@@ -11,14 +16,16 @@ class RegimeHMM:
             n_components=n_regimes,
             covariance_type=covariance_type,
             n_iter=1000,
-            random_state=42
+            random_state=42,
+            verbose=False,
         )
         self.is_fitted = False
 
     def fit(self, features: np.ndarray):
         """Fit HMM on pre-processed features."""
-        # features should be (n_samples, n_features)
-        self.model.fit(features)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self.model.fit(features)
         self.is_fitted = True
         return self
 
@@ -49,7 +56,7 @@ def walk_forward_regime_inference(features: np.ndarray, train_window: int = 100)
     # Start inference after train_window
     for i in range(train_window, n_samples):
         window_features = features[i-train_window:i]
-        hmm = RegimeHMM(n_regimes=2) # simplified to 2 regimes
+        hmm = RegimeHMM(n_regimes=2)  # simplified to 2 regimes for walk-forward
         hmm.fit(window_features)
         
         # Predict the most recent regime
