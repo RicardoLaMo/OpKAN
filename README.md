@@ -1,5 +1,9 @@
 # OpKAN: Physics-Informed Kolmogorov-Arnold Networks for Options Pricing
 
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Python: 3.10+](https://img.shields.io/badge/Python-3.10+-blue.svg)
+![H200 Optimized](https://img.shields.io/badge/Compute-H200_Optimized-green.svg)
+
 OpKAN is a high-performance quantitative finance engine designed to solve the **Heston Stochastic Volatility PDE** using **Physics-Informed Kolmogorov-Arnold Networks (PI-KAN)**. Powered by the **NVIDIA H200 GPU**, OpKAN integrates a real-time reasoning agent (**LiuClaw**) to surgically mutate network topology based on market regime detection.
 
 ## 🚀 Key Features
