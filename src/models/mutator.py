@@ -2,6 +2,14 @@ import torch
 import torch.nn as nn
 from typing import Any, Tuple
 
+
+class ZeroEdge(nn.Module):
+    """Edge that always outputs zeros, used by the PRUNE action."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.zeros_like(x)
+
+
 class C2SymbolicEdge(nn.Module):
     """
     A symbolic KAN edge that evaluates a torch-compatible expression.
@@ -69,8 +77,7 @@ class TopologicalMutator:
             return f"Edge({edge_id}) kept as is."
 
         if action == "PRUNE":
-            # Replace with a constant zero edge for pruning
-            target_layer.swap_edge(in_idx, out_idx, nn.Sequential()) # Sequential() acts as identity or we can use a custom Zero module
+            target_layer.swap_edge(in_idx, out_idx, ZeroEdge())
             return f"Edge({edge_id}) pruned."
 
         if action == "REPLACE":
