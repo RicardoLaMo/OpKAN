@@ -229,28 +229,28 @@ class OpKANDashboard(App):
         # Loss Plot
         lp = self.query_one("#loss-plot")
         lp.plt.clear_data()
-        lp.plt.plot(self.history["loss"], color="red", label="Residual")
+        lp.plt.plot(self.history["loss"], color="red", label="Residual", marker="hd")
         lp.refresh()
         
         # Price Plot
         pp = self.query_one("#price-plot")
         pp.plt.clear_data()
-        pp.plt.plot(self.history["price"], color="yellow", label="V(S,v,t)")
+        pp.plt.plot(self.history["price"], color="yellow", label="V(S,v,t)", marker="hd")
         pp.refresh()
         
         # Greeks Plot
         gp = self.query_one("#greeks-plot")
         gp.plt.clear_data()
         if self.history["delta"]:
-            gp.plt.plot(self.history["delta"], color="cyan", label="Delta")
+            gp.plt.plot(self.history["delta"], color="cyan", label="Delta", marker="hd")
         if self.history["vega"]:
-            gp.plt.plot(self.history["vega"], color="magenta", label="Vega")
+            gp.plt.plot(self.history["vega"], color="magenta", label="Vega", marker="hd")
         gp.refresh()
         
         # Throughput
         tp = self.query_one("#tput-plot")
         tp.plt.clear_data()
-        tp.plt.plot(self.history["tput"], color="green", label="Velocity")
+        tp.plt.plot(self.history["tput"], color="green", label="Velocity", marker="hd")
         tp.refresh()
 
 if __name__ == "__main__":

@@ -12,6 +12,11 @@ from src.agent.dsl import StrategicDecision, ReflexDecision, EdgeMutation, Regim
 from src.engine.telemetry import telemetry
 
 
+import sys
+
+# Ensure logs are visible in the launcher immediately
+sys.stdout.reconfigure(line_buffering=True)
+
 class PIKANModel(nn.Module):
     def __init__(self, layers_config=None):
         super().__init__()
@@ -43,9 +48,12 @@ def run_live_session(data_path: str, batch_size: int = 4096, epochs: int = 5):
 
     def mock_think_fast(step, edge_stats, loss_delta):
         time.sleep(0.02)
+        # L0 has 3 inputs, 16 outputs in PIKANModel([3, 16, 1])
+        i = random.randint(0, 2)
+        j = random.randint(0, 15)
         return ReflexDecision(
             reasoning=f"Reflexive prune at step {step}.",
-            prunes=[f"L0_N{random.randint(0,15)}_to_L1_N{random.randint(0,15)}"],
+            prunes=[f"L0_N{i}_to_L1_N{j}"],
             lr_adjustment=1.0,
         )
 
@@ -78,6 +86,12 @@ def run_live_session(data_path: str, batch_size: int = 4096, epochs: int = 5):
     # 2. Data loading
     print(f"📥 Loading data from {data_path}...")
     df = load_opra_data(data_path)
+    
+    # Limit to 100k rows for faster initialization in demo mode
+    if len(df) > 100000:
+        print(f"💡 Large dataset detected ({len(df):,} rows). Subsampling to 100,000 rows for real-time demo.")
+        df = df.sample(100000).sort_values('timestamp')
+
     df = clean_and_augment(df)
     dataloader = get_dataloader(df, batch_size=batch_size, shuffle=False)
 
@@ -127,13 +141,16 @@ def run_live_session(data_path: str, batch_size: int = 4096, epochs: int = 5):
             
             loss = pde_loss + bnd_loss
             loss.backward()
-            optimizer.step()
 
-            # 🚀 Real-time Greeks Extraction
-            dV_dS = torch.autograd.grad(V.sum(), S_int, retain_graph=True)[0]
+            # 🚀 Real-time Greeks Extraction (BEFORE optimizer.step() modifies weights)
+            # We need create_graph=True for dV_dS to compute Gamma (second derivative)
+            dV_dS = torch.autograd.grad(V.sum(), S_int, create_graph=True, retain_graph=True)[0]
             delta_val = dV_dS.mean().item()
             gamma_val = torch.autograd.grad(dV_dS.sum(), S_int, retain_graph=True)[0].mean().item()
             vega_val = torch.autograd.grad(V.sum(), v_int, retain_graph=True)[0].mean().item()
+
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+            optimizer.step()
 
             # LLM interaction
             coordinator.apply_pending_mutations(model, optimizer)

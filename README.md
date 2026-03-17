@@ -40,22 +40,17 @@ pip install torch pandas numpy scipy streamlit plotly hmmlearn instructor openai
 ./scripts/start_vllm.sh
 ```
 
-### 2. Run Live Training Session
+### 2. Run Integrated OpKAN Session (Math + TUI)
+This single command launches the math engine in the background and the high-res TUI in the foreground.
 ```bash
-PYTHONPATH=. python3 scripts/live_session.py
+python3 scripts/launch_opkan.py
 ```
 
-### 3. Launch Telemetry Dashboards
-OpKAN provides two ways to monitor the engine:
-
-*   **Terminal Telemetry (TUI)**: Optimized for SSH/H200 environments.
-    ```bash
-    python3 src/ui/tui/app.py
-    ```
-*   **Streamlit (Browser)**: Rich visualization for local analysis.
-    ```bash
-    streamlit run src/ui/dashboard.py
-    ```
+### 3. Manual Monitoring (Optional)
+If you prefer running components separately:
+*   **Math Engine**: `PYTHONPATH=. python3 scripts/live_session.py`
+*   **Terminal TUI**: `PYTHONPATH=. python3 src/ui/tui/app.py`
+*   **Streamlit (Browser)**: `streamlit run src/ui/dashboard.py`
 
 ### 4. Backtesting
 ```bash
