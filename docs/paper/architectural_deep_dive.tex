@@ -71,7 +71,7 @@ In a KAN, the activation functions live on the \textbf{edges} rather than the no
 \subsection{Superiority for PDEs}
 \begin{itemize}
     \item \textbf{$C^2$ Continuity}: Solving second-order PDEs requires stable second-order derivatives. MLPs using ReLU are only $C^0$ continuous, leading to vanishing or non-existent second derivatives. KAN edges (B-splines or symbolic functions) are naturally $C^2$ or higher, providing smoother and more accurate PDE residuals.
-    \item \textbfInterpretability}: KANs can be reduced to symbolic mathematical expressions. This allows the \textbf{LiuClaw Agent} to inspect the model and replace learned splines with exact formulas like $\sin(x)$ or $\exp(x)$, improving generalization.
+    \item \textbf{Interpretability}: KANs can be reduced to symbolic mathematical expressions. This allows the \textbf{LiuClaw Agent} to inspect the model and replace learned splines with exact formulas like $\sin(x)$ or $\exp(x)$, improving generalization.
     \item \textbf{Sample Efficiency}: KANs often require significantly fewer parameters than MLPs to achieve the same accuracy in solving differential equations.
 \end{itemize}
 
