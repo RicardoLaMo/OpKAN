@@ -89,6 +89,13 @@ def run_live_session(data_path: str, batch_size: int = 4096, epochs: int = 5):
     total_steps = 0
     start_time = time.time()
 
+    # Write initial state
+    telemetry.write({
+        "step": 0, "pde_loss": 1.0, "option_price": 10.0,
+        "delta": 0.5, "gamma": 0.02, "vega": 0.1, "throughput": 0,
+        "regime": "INITIALIZING", "logs": [], "s1_active": False, "s2_active": False, "dual_mode": True
+    })
+
     for epoch in range(epochs):
         for i, (features, _) in enumerate(dataloader):
             total_steps += 1

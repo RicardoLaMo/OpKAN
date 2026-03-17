@@ -1,0 +1,1 @@
+{"step": 10, "pde_loss": 0.05, "option_price": 12.5, "delta": 0.6, "gamma": 0.03, "vega": 0.15, "throughput": 26000, "regime": "STABLE", "logs": [{"timestamp": "12:00:00", "message": "Test log"}], "s1_active": true, "s2_active": false, "dual_mode": true}

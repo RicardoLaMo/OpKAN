@@ -6,45 +6,45 @@ Database file #1: references.bib
 Warning--empty booktitle in horvath2021deep
 Warning--can't use both volume and number fields in horvath2021deep
 Warning--empty publisher in kolmogorov1957representation
-You've used 15 entries,
+You've used 19 entries,
             2773 wiz_defined-function locations,
-            677 strings with 7760 characters,
-and the built_in function-call counts, 7569 in all, are:
-= -- 637
-> -- 512
-< -- 10
-+ -- 174
-- -- 159
-* -- 636
-:= -- 1178
-add.period$ -- 46
-call.type$ -- 15
-change.case$ -- 96
-chr.to.int$ -- 15
-cite$ -- 33
-duplicate$ -- 334
-empty$ -- 584
-format.name$ -- 176
-if$ -- 1560
+            700 strings with 8514 characters,
+and the built_in function-call counts, 10086 in all, are:
+= -- 857
+> -- 704
+< -- 11
++ -- 238
+- -- 219
+* -- 865
+:= -- 1562
+add.period$ -- 59
+call.type$ -- 19
+change.case$ -- 128
+chr.to.int$ -- 19
+cite$ -- 41
+duplicate$ -- 431
+empty$ -- 756
+format.name$ -- 240
+if$ -- 2084
 int.to.chr$ -- 1
 int.to.str$ -- 1
-missing$ -- 17
-newline$ -- 83
-num.names$ -- 60
-pop$ -- 208
+missing$ -- 21
+newline$ -- 103
+num.names$ -- 76
+pop$ -- 271
 preamble$ -- 1
-purify$ -- 83
+purify$ -- 111
 quote$ -- 0
-skip$ -- 257
+skip$ -- 339
 stack$ -- 0
-substring$ -- 236
-swap$ -- 36
-text.length$ -- 4
+substring$ -- 340
+swap$ -- 52
+text.length$ -- 5
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 155
+type$ -- 199
 warning$ -- 3
-while$ -- 63
+while$ -- 82
 width$ -- 0
-write$ -- 196
+write$ -- 248
 (There were 3 warnings)

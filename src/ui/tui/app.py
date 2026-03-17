@@ -57,7 +57,7 @@ class BrainStatus(Static):
         return Panel(table, title="Neural Engine", border_style="blue")
 
 class OpKANDashboard(App):
-    """The main OpKAN Terminal Telemetry App (100% Real-time)."""
+    """The main OpKAN Terminal Telemetry App (Improved IPC)."""
     
     CSS = """
     Screen {
@@ -145,11 +145,13 @@ class OpKANDashboard(App):
     def on_mount(self) -> None:
         self.history = {
             "loss": [], "price": [], "tput": [],
-            "delta": [], "gamma": [], "vega": []
+            "delta": [], "vega": []
         }
         self.last_log_idx = 0
+        self.last_published_step = -1
         self.init_plots()
-        self.set_interval(0.2, self.poll_telemetry)
+        # High-frequency poll for TUI responsiveness
+        self.set_interval(0.1, self.poll_telemetry)
 
     def init_plots(self):
         theme = "dark"
@@ -168,26 +170,35 @@ class OpKANDashboard(App):
     def poll_telemetry(self) -> None:
         """Polls the real telemetry store for 100% live data."""
         data = telemetry.read()
-        if not data: return
+        if not data:
+            return
 
-        # 1. Update Metrics
+        current_step = data.get("step", 0)
+        
+        # 1. Update Metrics (Always update cards for current values)
         self.throughput = data.get("throughput", 0)
         self.pde_loss = data.get("pde_loss", 0.0)
         self.option_price = data.get("option_price", 0.0)
-        self.regime = data.get("regime", "UNKNOWN")
+        self.regime = data.get("regime", "WAITING")
         self.delta = data.get("delta", 0.0)
         self.gamma = data.get("gamma", 0.0)
         self.vega = data.get("vega", 0.0)
         
-        # 2. Update Histories for Plots
-        self.history["loss"].append(self.pde_loss)
-        self.history["price"].append(self.option_price)
-        self.history["tput"].append(self.throughput)
-        self.history["delta"].append(self.delta)
-        self.history["vega"].append(self.vega)
-        
-        for k in self.history:
-            if len(self.history[k]) > 100: self.history[k].pop(0)
+        # 2. Update Histories only if step has advanced
+        # This prevents flat lines caused by redundant plotting of the same point
+        if current_step > self.last_published_step:
+            self.history["loss"].append(self.pde_loss)
+            self.history["price"].append(self.option_price)
+            self.history["tput"].append(self.throughput)
+            self.history["delta"].append(self.delta)
+            self.history["vega"].append(self.vega)
+            
+            for k in self.history:
+                if len(self.history[k]) > 150: # Increased history for better resolution
+                    self.history[k].pop(0)
+            
+            self.last_published_step = current_step
+            self.refresh_plots()
             
         # 3. Update UI Cards
         self.query_one("#card-tput").value = f"{self.throughput:,}"
@@ -212,25 +223,22 @@ class OpKANDashboard(App):
                 self.query_one("#agent-log").write(f"[dim]{entry['timestamp']}[/] {entry['message']}")
             self.last_log_idx = len(logs)
         elif len(logs) < self.last_log_idx:
-            # Store was reset
             self.last_log_idx = 0
-
-        self.refresh_plots()
 
     def refresh_plots(self):
         # Loss Plot
         lp = self.query_one("#loss-plot")
         lp.plt.clear_data()
-        lp.plt.plot(self.history["loss"], color="red")
+        lp.plt.plot(self.history["loss"], color="red", label="Residual")
         lp.refresh()
         
         # Price Plot
         pp = self.query_one("#price-plot")
         pp.plt.clear_data()
-        pp.plt.plot(self.history["price"], color="yellow")
+        pp.plt.plot(self.history["price"], color="yellow", label="V(S,v,t)")
         pp.refresh()
         
-        # Greeks Plot (Multi-line)
+        # Greeks Plot
         gp = self.query_one("#greeks-plot")
         gp.plt.clear_data()
         if self.history["delta"]:
@@ -242,7 +250,7 @@ class OpKANDashboard(App):
         # Throughput
         tp = self.query_one("#tput-plot")
         tp.plt.clear_data()
-        tp.plt.plot(self.history["tput"], color="green")
+        tp.plt.plot(self.history["tput"], color="green", label="Velocity")
         tp.refresh()
 
 if __name__ == "__main__":
