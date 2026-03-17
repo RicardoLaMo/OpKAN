@@ -109,8 +109,8 @@ class OpKANDashboard(App):
                     yield MetricCard(title="Regime", id="card-regime")
                 
                 with Horizontal(id="plots-row"):
-                    yield PlotextPlot(title="Loss Convergence", id="loss-plot")
-                    yield PlotextPlot(title="Effective Throughput", id="tput-plot")
+                    yield PlotextPlot(id="loss-plot")
+                    yield PlotextPlot(id="tput-plot")
                 
                 with Vertical(id="log-row"):
                     yield Label("[bold yellow]🧠 LiuClaw reasoning Stream[/]")
@@ -132,11 +132,13 @@ class OpKANDashboard(App):
         # Loss Plot
         loss_plt = self.query_one("#loss-plot").plt
         loss_plt.theme("dark")
+        loss_plt.title("Loss Convergence")
         loss_plt.ylabel("MSE Loss")
         
         # Tput Plot
         tput_plt = self.query_one("#tput-plot").plt
         tput_plt.theme("dark")
+        tput_plt.title("Effective Throughput")
         tput_plt.ylabel("Samples/sec")
 
     def update_data(self) -> None:
