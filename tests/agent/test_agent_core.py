@@ -1,47 +1,62 @@
 import pytest
 from unittest.mock import MagicMock
 from src.agent.core import LiuClawAgent
-from src.agent.dsl import LiuClawDecision, EdgeMutation
+from src.agent.dsl import LiuClawDecision, EdgeMutation, RegimeThesis
 
-def test_liuclaw_decision_validation():
-    # Validates that the Pydantic model works as expected
+def test_liuclaw_decision_validation_v2():
+    # Validates the new Master Payload schema
     data = {
-        "reasoning": "Market is in high vol regime, observed exponential-like growth in some edges.",
+        "training_command": "CONTINUE",
+        "reasoning": "Reasoning for the decision.",
         "mutations": [
             {
-                "layer_idx": 0,
-                "input_idx": 1,
-                "output_idx": 2,
-                "symbolic_expression": "torch.exp(x)",
-                "explanation": "High volatility requires exponential growth."
+                "edge_id": "L0_N0_to_L1_N1",
+                "action": "REPLACE",
+                "formula": "torch.exp(x)",
+                "reasoning": "High vol trend detected."
+            },
+            {
+                "edge_id": "L0_N1_to_L1_N0",
+                "action": "PRUNE",
+                "reasoning": "Insignificant activation."
             }
         ],
-        "confidence": 0.9,
-        "regime_adjustment": "Tighten BC constraints for small S."
+        "regime_analysis": {
+            "hmm_transition_detected": True,
+            "predicted_regime": 1,
+            "thesis_statement": "Volatility expansion due to skew steepening."
+        },
+        "confidence": 0.95
     }
     decision = LiuClawDecision(**data)
-    assert decision.confidence == 0.9
-    assert decision.mutations[0].symbolic_expression == "torch.exp(x)"
+    assert decision.training_command == "CONTINUE"
+    assert len(decision.mutations) == 2
+    assert decision.regime_analysis.predicted_regime == 1
 
-def test_agent_decide_mutations_mock():
-    # Mock the InstructorClient to return a LiuClawDecision
+def test_agent_decide_mutations_vllm_mock():
+    # Mock the InstructorClient to return the new LiuClawDecision schema
     agent = LiuClawAgent()
     agent.client.get_structured_response = MagicMock(return_value=LiuClawDecision(
-        reasoning="Reasoning content",
+        training_command="CONTINUE",
+        reasoning="Global reasoning",
         mutations=[EdgeMutation(
-            layer_idx=0, input_idx=0, output_idx=0, 
-            symbolic_expression="torch.pow(x, 2)", 
-            explanation="Quadratic trend detected."
+            edge_id="L0_N0_to_L1_N1",
+            action="REPLACE",
+            formula="torch.pow(x, 2)",
+            reasoning="Quadratic fit for S."
         )],
-        confidence=0.8
+        regime_analysis=RegimeThesis(
+            hmm_transition_detected=False
+        ),
+        confidence=1.0
     ))
     
     decision = agent.decide_mutations(
-        kan_stats={"edge_0_0_0": {"mean": 1.2, "std": 0.5}},
-        current_regime="Regime 1: High Vol",
-        vol_info="Surface is flat"
+        kan_state={"L0_N0_to_L1_N1": {"mean": 1.2}},
+        pipeline_health={"bid_ask_spread": 0.01}
     )
     
-    assert decision.confidence == 0.8
-    assert decision.mutations[0].symbolic_expression == "torch.pow(x, 2)"
+    assert decision.training_command == "CONTINUE"
+    assert decision.mutations[0].edge_id == "L0_N0_to_L1_N1"
+    assert decision.mutations[0].action == "REPLACE"
     agent.client.get_structured_response.assert_called_once()

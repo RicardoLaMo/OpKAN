@@ -84,7 +84,7 @@ def benchmark_h200(data_path: str, batch_size: int = 1024, epochs: int = 10):
             
             # Occasional agent request
             if i % 50 == 0:
-                coordinator.request_mutation({"step": i}, "Low Vol", "Benchmark")
+                coordinator.request_mutation({"step": i}, {"health": "benchmark"})
                 
             running_loss += total_loss.item()
             

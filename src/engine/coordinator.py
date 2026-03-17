@@ -35,11 +35,11 @@ class EngineCoordinator:
                 # Wait for new context (non-blocking with timeout to allow exit)
                 context = context_queue.get(timeout=0.1)
                 
-                # Unpack context
-                kan_stats, current_regime, vol_info = context
+                # Unpack context (kan_state, pipeline_health)
+                kan_state, pipeline_health = context
                 
                 # Perform reasoning (slow call to LLM)
-                decision = self.agent.decide_mutations(kan_stats, current_regime, vol_info)
+                decision = self.agent.decide_mutations(kan_state, pipeline_health)
                 
                 # Push decision to the queue
                 decision_queue.put(decision)
@@ -56,34 +56,40 @@ class EngineCoordinator:
         while not decision_queue.empty():
             try:
                 decision = decision_queue.get_nowait()
+                
+                if decision.training_command == "HALT":
+                    print("🚨 LiuClaw HALT command received! Terminating training loop.")
+                    return "HALT"
+
                 print(f"Applying mutations from agent. Reasoning: {decision.reasoning}")
                 
                 for mutation in decision.mutations:
-                    # Apply mutation using the 'TopologicalMutator'
-                    # Assuming model has 'layers' attribute
-                    target_layer = model.layers[mutation.layer_idx]
                     status = TopologicalMutator.mutate_edge(
-                        target_layer, 
-                        mutation.input_idx, 
-                        mutation.output_idx, 
-                        mutation.symbolic_expression
+                        model, 
+                        mutation.edge_id, 
+                        mutation.action, 
+                        mutation.formula
                     )
                     print(f"Mutation status: {status}")
                 
+                if decision.regime_analysis.hmm_transition_detected:
+                    print(f"🚨 Regime Shift Detected: {decision.regime_analysis.predicted_regime}!")
+                    print(f"Thesis: {decision.regime_analysis.thesis_statement}")
+
                 decision_queue.task_done()
             except queue.Empty:
                 break
             except Exception as e:
                 print(f"Failed to apply mutation: {e}")
+        return "CONTINUE"
 
     @staticmethod
-    def request_mutation(kan_stats: Dict[str, Any], current_regime: str, vol_info: str):
+    def request_mutation(kan_state: Dict[str, Any], pipeline_health: Dict[str, Any]):
         """Submits context to the agent for decision making."""
         if context_queue.full():
             try:
-                # Remove stale context if it wasn't processed
                 context_queue.get_nowait()
             except queue.Empty:
                 pass
         
-        context_queue.put((kan_stats, current_regime, vol_info))
+        context_queue.put((kan_state, pipeline_health))

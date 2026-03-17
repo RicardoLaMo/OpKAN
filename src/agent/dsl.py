@@ -1,21 +1,30 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 class EdgeMutation(BaseModel):
     """
-    Defines a mutation for a specific KAN edge.
+    Defines a mutation for a specific KAN edge with tool-calling schema.
     """
-    layer_idx: int = Field(..., description="Index of the KAN layer.")
-    input_idx: int = Field(..., description="Index of the input neuron.")
-    output_idx: int = Field(..., description="Index of the output neuron.")
-    symbolic_expression: str = Field(..., description="The Python/Torch symbolic expression (e.g., 'torch.pow(x, 2)'). Must be C^2 continuous.")
-    explanation: str = Field(..., description="Brief explanation of why this mutation was chosen.")
+    edge_id: str = Field(..., description="The exact ID of the B-spline edge, e.g., 'L0_N0_to_L1_N1'")
+    action: Literal["PRUNE", "REPLACE", "KEEP"] = Field(..., description="The topological action to take on the edge.")
+    formula: Optional[str] = Field(None, description="If action is REPLACE, provide the strictly C^2 continuous PyTorch formula (e.g., 'torch.pow(x, 2)'). Otherwise null.")
+    reasoning: str = Field(..., description="A rigorous quantitative justification for this action based on L1 norms and sampled points.")
+
+class RegimeThesis(BaseModel):
+    """
+    The structural thesis explaining the current market regime shift.
+    """
+    hmm_transition_detected: bool = Field(..., description="True if the HMM probabilities indicate an impending regime shift.")
+    predicted_regime: Optional[int] = Field(None, description="The target regime state (0: Diffusion, 1: Vol Expansion, 2: Jump/Crash)")
+    thesis_statement: Optional[str] = Field(None, description="A 3-sentence thesis explaining what structural changes in the volatility surface (based on the KAN) triggered this shift.")
 
 class LiuClawDecision(BaseModel):
     """
-    The structured decision output from the LiuClaw agent.
+    The master payload received by the PyTorch training loop.
+    Guaranteed valid JSON schema through instructor/vLLM.
     """
-    reasoning: str = Field(..., description="Chain-of-thought reasoning for the current set of mutations.")
-    mutations: List[EdgeMutation] = Field(default_factory=list, description="List of edge mutations to apply.")
-    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score for the proposed mutations.")
-    regime_adjustment: Optional[str] = Field(None, description="Instructions for adjusting training priors based on detected market regime.")
+    training_command: Literal["CONTINUE", "HALT"] = Field(..., description="HALT only if arbitrage violations or severe data corruption is detected.")
+    reasoning: str = Field(..., description="Overall reasoning for the proposed mutations and regime analysis.")
+    mutations: List[EdgeMutation] = Field(default_factory=list, description="List of topological optimizations for the KAN.")
+    regime_analysis: RegimeThesis = Field(..., description="The agent's analysis of market regime shifts.")
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0, description="Confidence score for the overall decision.")
