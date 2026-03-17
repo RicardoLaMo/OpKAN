@@ -60,11 +60,19 @@ MLPs rely on fixed node activations (e.g., ReLU), which are $C^0$ continuous and
 By using B-splines or symbolic functions for $\phi_{q,p}$, we guarantee $C^2$ continuity, which is essential for stable PDE residuals.
 
 \subsection{LiuClaw: The Topological Surgeon}
-The prior "Anchor-Residual" architecture (Draft v1) simply added a delta to a Black-Scholes price. The current OpKAN architecture allows the agent to:
+The current OpKAN architecture allows the agent to:
 \begin{enumerate}
     \item \textbf{PRUNE}: Remove edges with low L1-activation norms.
     \item \textbf{REPLACE}: Swap a generic B-spline for a function like $\text{torch.pow}(x, 2)$ when a quadratic volatility smile is detected.
 \end{enumerate}
+
+\subsection{Dual-Process Thinking: System 1 and System 2}
+To optimize the interaction between high-speed mathematical execution and deep qualitative reasoning, OpKAN implements a dual-process "brain":
+\begin{itemize}
+    \item \textbf{System 1 (Fast Thinking)}: Handles high-frequency reflexive maintenance (e.g., pruning near-zero weights, learning rate annealing). It operates on immediate state snapshots with <50ms latency.
+    \item \textbf{System 2 (Slow Thinking)}: Performs infrequent, strategic structural reviews (e.g., selecting C2 symbolic replacements, regime shift diagnosis). It utilizes the full reasoning capabilities of models like DeepSeek-R1 over long-term historical windows.
+\end{itemize}
+This bifurcation ensures that the NVIDIA H200 GPU maintains maximal math throughput while benefiting from sophisticated topological guidance.
 
 \section{Experimental Results}
 
