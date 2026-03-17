@@ -1,0 +1,6 @@
+check_id,description,pass
+quote_vol_monotonic,Quote implied volatility should rise from STABLE to STRESS,True
+quote_price_monotonic,ATM call price should rise from STABLE to STRESS under regime-vol adjustment,True
+surface_mean_vol_monotonic,Surface mean volatility should rise from STABLE to STRESS,True
+outlook_shock_score_monotonic,SPIKAN shock score should rise from STABLE to STRESS,True
+outlook_risk_labels_ordered,Shock risk labels should move LOW -> MODERATE -> HIGH,True

@@ -1,0 +1,2 @@
+n_cases,translation_success_rate,dsl_exact_rate,valid_dsl_rate,semantic_agreement_rate,execution_success_rate,result_agreement_rate,latency_seconds_mean
+8,1.0,0.375,1.0,0.75,1.0,0.75,0.5430586082584341

@@ -19,13 +19,27 @@ class RegimeThesis(BaseModel):
     predicted_regime: Optional[int] = Field(None, description="The target regime state (0: Diffusion, 1: Vol Expansion, 2: Jump/Crash)")
     thesis_statement: Optional[str] = Field(None, description="A 3-sentence thesis explaining what structural changes in the volatility surface (based on the KAN) triggered this shift.")
 
+class StrategicDecision(BaseModel):
+    """
+    System 2: High-latency, deep reasoning decision.
+    """
+    reasoning: str = Field(..., description="Chain-of-thought reasoning over long-term trends and mathematical stability.")
+    mutations: List[EdgeMutation] = Field(default_factory=list, description="List of complex topological mutations (REPLACE).")
+    regime_analysis: RegimeThesis = Field(..., description="Deep analysis of market regime shifts.")
+    training_command: Literal["CONTINUE", "HALT"] = Field("CONTINUE", description="Emergency halt command.")
+
+class ReflexDecision(BaseModel):
+    """
+    System 1: Low-latency, reflexive decision.
+    """
+    reasoning: str = Field(..., description="Fast justification for reflexive maintenance.")
+    prunes: List[str] = Field(default_factory=list, description="List of edge IDs to immediately PRUNE.")
+    lr_adjustment: float = Field(1.0, description="Multiplier for the current learning rate (e.g., 0.9 to decay, 1.1 to boost).")
+
 class LiuClawDecision(BaseModel):
     """
-    The master payload received by the PyTorch training loop.
-    Guaranteed valid JSON schema through instructor/vLLM.
+    Master payload for backward compatibility or unified responses.
     """
-    training_command: Literal["CONTINUE", "HALT"] = Field(..., description="HALT only if arbitrage violations or severe data corruption is detected.")
-    reasoning: str = Field(..., description="Overall reasoning for the proposed mutations and regime analysis.")
-    mutations: List[EdgeMutation] = Field(default_factory=list, description="List of topological optimizations for the KAN.")
-    regime_analysis: RegimeThesis = Field(..., description="The agent's analysis of market regime shifts.")
-    confidence: float = Field(default=1.0, ge=0.0, le=1.0, description="Confidence score for the overall decision.")
+    strategic: Optional[StrategicDecision] = None
+    reflex: Optional[ReflexDecision] = None
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)

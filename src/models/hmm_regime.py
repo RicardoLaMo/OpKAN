@@ -53,8 +53,15 @@ def walk_forward_regime_inference(features: np.ndarray, train_window: int = 100)
         hmm.fit(window_features)
         
         # Predict the most recent regime
-        # HMM is invariant to state labeling (0/1/2) - requires sorting/mapping for stability
+        # HMM is invariant to state labeling — sort states by mean realized_vol
+        # (feature index 1) so regime 0 always maps to low-vol state across windows.
+        # Falls back to feature 0 if the feature matrix has only one column.
         pred_seq = hmm.predict_regimes(window_features)
-        regime_preds[i] = pred_seq[-1]
+        n_feats = hmm.model.means_.shape[1]
+        sort_idx = min(1, n_feats - 1)          # prefer realized_vol (col 1)
+        means = hmm.model.means_[:, sort_idx]
+        sorted_states = np.argsort(means)        # ascending: index 0 = lowest vol
+        remap = {old: new for new, old in enumerate(sorted_states)}
+        regime_preds[i] = remap[int(pred_seq[-1])]
         
     return regime_preds

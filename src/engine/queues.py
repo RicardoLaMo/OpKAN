@@ -1,8 +1,9 @@
 import queue
 
-# Thread-safe queues for async communication
-# Context: (kan_stats, current_regime, vol_info)
-context_queue = queue.Queue(maxsize=1) # Only need the most recent context
+# Thread-safe queues for dual-process communication
+reflex_queue = queue.Queue(maxsize=5)    # System 1: Fast tasks
+strategic_queue = queue.Queue(maxsize=1) # System 2: Slow strategic tasks
 
-# Decisions: LiuClawDecision
-decision_queue = queue.Queue() # Collect all proposed mutations
+# Decision queues
+reflex_decision_queue = queue.Queue()
+strategic_decision_queue = queue.Queue()

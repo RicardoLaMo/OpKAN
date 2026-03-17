@@ -1,0 +1,13 @@
+{
+  "git_commit": "e541b8c0973f569bdaa29d7bdddcdde238b49a50",
+  "git_branch": "wip/local-dirty-20260313-155104",
+  "store_path": "/home/wliu23/google_drive/Thesis/investment/reports/options/kan_store",
+  "spikan_checkpoint": "/home/wliu23/google_drive/Thesis/investment/reports/silver/spikan_smoke_amp2/spikan_shock.pt",
+  "artifacts": {
+    "details_csv": "/home/wliu23/google_drive/Thesis/investment/output/paper/raw_vs_controlled_regime/details.csv",
+    "summary_csv": "/home/wliu23/google_drive/Thesis/investment/output/paper/raw_vs_controlled_regime/summary.csv",
+    "controller_burden_csv": "/home/wliu23/google_drive/Thesis/investment/output/paper/raw_vs_controlled_regime/controller_burden.csv",
+    "controller_burden_summary_csv": "/home/wliu23/google_drive/Thesis/investment/output/paper/raw_vs_controlled_regime/controller_burden_summary.csv",
+    "figure_png": "/home/wliu23/google_drive/Thesis/investment/output/paper/raw_vs_controlled_regime/raw_vs_controlled_regime.png"
+  }
+}

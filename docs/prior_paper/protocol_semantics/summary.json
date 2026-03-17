@@ -1,0 +1,12 @@
+{
+  "n_cases": 12,
+  "n_groups": 4,
+  "translation_success_rate": 1.0,
+  "valid_dsl_rate": 1.0,
+  "execution_success_rate": 1.0,
+  "signature_match_rate": 0.9166666666666666,
+  "group_signature_consistency_rate": 0.75,
+  "group_result_consistency_rate": 0.75,
+  "all_group_pass_rate": 0.75,
+  "latency_seconds_mean": 0.640800162005083
+}
