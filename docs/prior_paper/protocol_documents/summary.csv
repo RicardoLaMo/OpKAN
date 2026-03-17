@@ -1,0 +1,2 @@
+segment,n_cases,translation_success_rate,valid_dsl_rate,execution_success_rate,intent_match_rate,latency_seconds_mean
+document_grounded,8,1.0,1.0,1.0,1.0,2.746644372753508

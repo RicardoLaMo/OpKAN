@@ -1,0 +1,21 @@
+{
+  "git_commit": "e541b8c0973f569bdaa29d7bdddcdde238b49a50",
+  "git_branch": "wip/local-dirty-20260313-155104",
+  "ollama_base_url": "http://127.0.0.1:11434",
+  "configured_model": "qwen2.5-coder:latest",
+  "resolved_model": "qwen2.5-coder:latest",
+  "temperature": 0.2,
+  "max_retries": 3,
+  "n_cases": 15,
+  "feature_path": "/home/wliu23/google_drive/Thesis/investment/data/processed/silver_features_20260314-122441_ff97dd3902_fluid_sectional.parquet",
+  "state_date": "2026-03-13",
+  "current_regime_label": "RECOVERY",
+  "store_path": "/home/wliu23/google_drive/Thesis/investment/reports/options/kan_store",
+  "spikan_checkpoint": "/home/wliu23/google_drive/Thesis/investment/reports/silver/spikan_smoke_amp2/spikan_shock.pt",
+  "artifacts": {
+    "cases_csv": "/home/wliu23/google_drive/Thesis/investment/output/paper/protocol/cases.csv",
+    "summary_csv": "/home/wliu23/google_drive/Thesis/investment/output/paper/protocol/summary.csv",
+    "example_operations_csv": "/home/wliu23/google_drive/Thesis/investment/output/paper/protocol/example_operations.csv",
+    "protocol_metrics_png": "/home/wliu23/google_drive/Thesis/investment/output/paper/protocol/protocol_metrics.png"
+  }
+}

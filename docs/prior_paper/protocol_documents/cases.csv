@@ -1,0 +1,49 @@
+case_id,source_path,excerpt,analyst_request,prompt,expected_query_type,translation_success,dsl,valid_dsl,parsed_type,execution_success,result_query_type,intent_match,result_summary_json,latency_seconds
+fluid_outlook_from_report,reports/silver/fluid_dynamics/FLUID_DYNAMICS_REPORT.md,"Shock warnings identify potential regime transitions before they occur. Momentum decay rate distinguishes trending vs mean-reverting periods. Combined with Ricci curvature, the framework provides complete market state assessment.","Based on this excerpt, generate one near-term silver outlook query for the next 10 days using the backdrop implied by the report.","Document source: reports/silver/fluid_dynamics/FLUID_DYNAMICS_REPORT.md
+Document excerpt:
+Shock warnings identify potential regime transitions before they occur. Momentum decay rate distinguishes trending vs mean-reverting periods. Combined with Ricci curvature, the framework provides complete market state assessment.
+
+Analyst request: Based on this excerpt, generate one near-term silver outlook query for the next 10 days using the backdrop implied by the report.
+Return exactly one DSL command.",OUTLOOK,True,OUTLOOK asset=silver horizon=10d backdrop=STRESS,True,OutlookQuery,True,OUTLOOK,True,"{""confidence"": 0.22398721496151225, ""direction"": ""neutral"", ""flow_regime"": ""UNSETTLED"", ""outlook_score"": 13.452220902093137, ""query_type"": ""OUTLOOK"", ""shock_risk"": ""MODERATE""}",17.460313870979007
+fluid_scenario_from_report,reports/silver/fluid_dynamics/FLUID_DYNAMICS_REPORT.md,High SFI indicates shock formation: momentum is self-reinforcing faster than it dissipates. Shock warnings identify potential regime transitions before they occur.,"Convert this into one silver scenario query that inspects price, delta, and vega under the regime implied by the excerpt.","Document source: reports/silver/fluid_dynamics/FLUID_DYNAMICS_REPORT.md
+Document excerpt:
+High SFI indicates shock formation: momentum is self-reinforcing faster than it dissipates. Shock warnings identify potential regime transitions before they occur.
+
+Analyst request: Convert this into one silver scenario query that inspects price, delta, and vega under the regime implied by the excerpt.
+Return exactly one DSL command.",WHAT_IF,True,"SCENARIO asset=silver target=STRESS metrics=[price,delta,vega]",True,WhatIfQuery,True,WHAT_IF,True,"{""analysis_delta_delta"": -0.1145067459599427, ""analysis_delta_price"": -34.26112882931176, ""analysis_delta_vega"": 0.0199232543528578, ""query_type"": ""WHAT_IF""}",0.48915753996698186
+validation_surface_from_summary,reports/silver/out_of_sample_validation/validation_summary.txt,"BASE Model Mean Accuracy: 0.8374. Sharpe ratios by regime: STABLE 2.954, STRESS -1.270, TRANSITION -0.032. SECTIONAL Model Mean Accuracy: 0.8382 with STABLE Sharpe 2.913.",Turn this into one silver volatility surface query for 30 days using the most favorable baseline regime implied by the excerpt.,"Document source: reports/silver/out_of_sample_validation/validation_summary.txt
+Document excerpt:
+BASE Model Mean Accuracy: 0.8374. Sharpe ratios by regime: STABLE 2.954, STRESS -1.270, TRANSITION -0.032. SECTIONAL Model Mean Accuracy: 0.8382 with STABLE Sharpe 2.913.
+
+Analyst request: Turn this into one silver volatility surface query for 30 days using the most favorable baseline regime implied by the excerpt.
+Return exactly one DSL command.",SURFACE,True,"SURFACE vol asset=silver regime=STABLE strikes=[0.9,0.95,1.0,1.05,1.1] T=30d",True,SurfaceQuery,True,SURFACE,True,"{""query_type"": ""SURFACE"", ""surface_points"": 5, ""surface_vol_mean"": 1.892271876335144}",1.0575324880192056
+validation_regime_check_from_summary,reports/silver/out_of_sample_validation/validation_summary.txt,Transitions detected: 203 / 627 in the base model and 160 / 628 in the sectional model. Stable has the strongest Sharpe while stress is negative.,Express the single most appropriate DSL command to check the current regime for silver before acting on this summary.,"Document source: reports/silver/out_of_sample_validation/validation_summary.txt
+Document excerpt:
+Transitions detected: 203 / 627 in the base model and 160 / 628 in the sectional model. Stable has the strongest Sharpe while stress is negative.
+
+Analyst request: Express the single most appropriate DSL command to check the current regime for silver before acting on this summary.
+Return exactly one DSL command.",REGIME_CURRENT,True,REGIME current asset=silver,True,RegimeCurrentQuery,True,REGIME_CURRENT,True,"{""current_regime"": ""RECOVERY"", ""query_type"": ""REGIME_CURRENT""}",0.27037068898789585
+hierarchical_quote_from_breaking_news,scripts/hierarchical_prior_demo.py,Strategic Outlook: Silver entering 6th year of structural deficit. Breaking news: Major inventory withdrawal at COMEX; 15% of physical stock moved to private vaults overnight. Rotor sensor spiking.,"Translate this into one silver call quote with spot 31, strike 32, 45 days to expiry, using regime volatility and the backdrop implied by the excerpt.","Document source: scripts/hierarchical_prior_demo.py
+Document excerpt:
+Strategic Outlook: Silver entering 6th year of structural deficit. Breaking news: Major inventory withdrawal at COMEX; 15% of physical stock moved to private vaults overnight. Rotor sensor spiking.
+
+Analyst request: Translate this into one silver call quote with spot 31, strike 32, 45 days to expiry, using regime volatility and the backdrop implied by the excerpt.
+Return exactly one DSL command.",PRICE,True,QUOTE call spot=31 strike=32 expiry=45d vol=kan_regime backdrop=STRESS rate=5%,True,PriceQuery,True,PRICE,True,"{""delta"": 0.32739721742569927, ""gamma"": 0.2157890384851971, ""price"": 0.3488355921016435, ""query_type"": ""PRICE"", ""rho"": 0.012082781278473327, ""theta"": -0.008052630359508425, ""vega"": 0.03929361001200775, ""volatility_used"": 0.1536913812160492}",0.8009868049994111
+tension_transition_prob_from_note,scripts/measure_prior_tension.py,Diagnosis: STRUCTURAL REGIME BREAK. The narrative implies a fundamental change in market geometry. Expect sharp skew inversions or non-linear correlation snaps.,Turn this into one DSL command that checks the odds of moving from stable toward stress over the next 10 days.,"Document source: scripts/measure_prior_tension.py
+Document excerpt:
+Diagnosis: STRUCTURAL REGIME BREAK. The narrative implies a fundamental change in market geometry. Expect sharp skew inversions or non-linear correlation snaps.
+
+Analyst request: Turn this into one DSL command that checks the odds of moving from stable toward stress over the next 10 days.
+Return exactly one DSL command.",REGIME_PROB,True,REGIME odds from=STABLE toward=STRESS horizon=10d,True,RegimeProbQuery,True,REGIME_PROB,True,"{""max_transition_prob"": 0.32175296545028687, ""query_type"": ""REGIME_PROB"", ""target_prob"": 0.32175296545028687}",0.5195363030070439
+plan_explain_from_regime_plan,docs/archive/silver_trend_regime_plan.md,Geometry adds value when curvature and GA-rotation diagnostics provide earlier or more robust regime transition signals than standard econometrics.,Convert this excerpt into one DSL command that explains the transition regime using Ricci curvature and MST stress.,"Document source: docs/archive/silver_trend_regime_plan.md
+Document excerpt:
+Geometry adds value when curvature and GA-rotation diagnostics provide earlier or more robust regime transition signals than standard econometrics.
+
+Analyst request: Convert this excerpt into one DSL command that explains the transition regime using Ricci curvature and MST stress.
+Return exactly one DSL command.",EXPLAIN,True,"EXPLAIN regime=TRANSITION features=[ricci_curvature,mst_stress]",True,ExplainQuery,True,EXPLAIN,True,"{""query_type"": ""EXPLAIN""}",0.540961500024423
+challenge_surface_from_regime_shift_note,scripts/regime_shift_challenge.py,"2011 Silver Peak Ground Truth: simulated sharp skew, high level. Shock simulation uses deep negative Ricci, high MST stress, high rotor magnitude, and realized vol 0.75.","Translate this into one silver volatility surface query across strikes 0.9, 1.0, and 1.1 for 30 days using the regime implied by the excerpt.","Document source: scripts/regime_shift_challenge.py
+Document excerpt:
+2011 Silver Peak Ground Truth: simulated sharp skew, high level. Shock simulation uses deep negative Ricci, high MST stress, high rotor magnitude, and realized vol 0.75.
+
+Analyst request: Translate this into one silver volatility surface query across strikes 0.9, 1.0, and 1.1 for 30 days using the regime implied by the excerpt.
+Return exactly one DSL command.",SURFACE,True,"SURFACE vol asset=silver regime=STRESS strikes=[0.9,1.0,1.1] T=30d",True,SurfaceQuery,True,SURFACE,True,"{""query_type"": ""SURFACE"", ""surface_points"": 3, ""surface_vol_mean"": 1.8711567719777424}",0.8342957860440947

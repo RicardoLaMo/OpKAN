@@ -1,0 +1,5 @@
+group_id,n_prompts,translation_success_rate,valid_dsl_rate,execution_success_rate,signature_match_rate,group_signature_consistent,group_result_consistent,all_cases_pass,mean_latency_seconds
+stress_outlook,3,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.6587913240073249
+stress_probability,3,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.4974375173333101
+stress_scenario,3,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.521108916339775
+transition_surface,3,1.0,1.0,1.0,0.6666666666666666,0.0,0.0,0.0,0.8858628903399222

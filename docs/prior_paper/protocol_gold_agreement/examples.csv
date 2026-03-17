@@ -1,0 +1,9 @@
+case_id,gold_dsl,llm_dsl,dsl_exact,semantic_agreement,result_agreement
+fluid_outlook_from_report,OUTLOOK asset=silver horizon=10d backdrop=STRESS,OUTLOOK asset=silver horizon=10d backdrop=STRESS,True,True,True
+fluid_scenario_from_report,"SCENARIO asset=silver target=STRESS metrics=[price,delta,vega]","SCENARIO asset=silver target=TRANSITION metrics=[price,delta,vega]",False,False,False
+validation_surface_from_summary,"SURFACE vol asset=silver regime=STABLE strikes=[0.9,0.95,1.0,1.05,1.1] T=30d","SURFACE vol asset=silver regime=STABLE strikes=[0.9,0.95,1.0,1.05,1.1] T=30d",True,True,True
+validation_regime_check_from_summary,REGIME current asset=silver,REGIME current asset=silver,True,True,True
+hierarchical_quote_from_breaking_news,QUOTE call spot=31 strike=32 expiry=45d vol=kan_regime backdrop=STRESS rate=5%,QUOTE call spot=31 strike=32 expiry=45d vol=kan_regime backdrop=STRESS,False,True,True
+tension_transition_prob_from_note,REGIME prob from=STABLE to=STRESS horizon=10d,REGIME odds from=STABLE toward=STRESS horizon=10d,False,True,True
+plan_explain_from_regime_plan,"EXPLAIN regime=TRANSITION features=[ricci,mst_stress]","EXPLAIN regime=TRANSITION features=[ricci_curvature,mst_stress]",False,True,True
+challenge_surface_from_regime_shift_note,"SURFACE vol asset=silver regime=STRESS strikes=[0.9,1.0,1.1] T=30d","SURFACE vol asset=silver regime=TRANSITION strikes=[0.9,0.95,1.0,1.05,1.1] T=30d",False,False,False

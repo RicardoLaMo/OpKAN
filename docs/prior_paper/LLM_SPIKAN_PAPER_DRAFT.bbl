@@ -1,0 +1,48 @@
+\begin{thebibliography}{1}
+
+\bibitem{black_scholes_1973}
+F.~Black and M.~Scholes.
+\newblock The pricing of options and corporate liabilities.
+\newblock {\em Journal of Political Economy}, 81(3):637--654, 1973.
+
+\bibitem{hutchinson_lo_poggio_1994}
+J.~M. Hutchinson, A.~W. Lo, and T.~Poggio.
+\newblock A nonparametric approach to pricing and hedging derivative securities via learning networks.
+\newblock {\em Journal of Finance}, 49(3):851--889, 1994.
+
+\bibitem{liu_etal_2024_kan}
+Z.~Liu, Y.~Wang, S.~Vaidya, F.~Ruehle, J.~Halverson, M.~Solja\v{c}i\'{c}, T.~Y. Hou, and M.~Tegmark.
+\newblock {KAN}: Kolmogorov-arnold networks.
+\newblock {\em arXiv preprint arXiv:2404.19756}, 2024.
+
+\bibitem{merton_1973}
+R.~C. Merton.
+\newblock Theory of rational option pricing.
+\newblock {\em Bell Journal of Economics and Management Science}, 4(1):141--183, 1973.
+
+\bibitem{nguyen_etal_2023_mononet}
+A.-P. Nguyen, D.~L. Moreno, N.~Le-Bel, A.~Lucchi, and M.~Rodriguez~Martinez.
+\newblock {MonoNet}: Enhancing interpretability in neural networks via monotonic features.
+\newblock {\em Bioinformatics Advances}, 3(1):vbad016, 2023.
+
+\bibitem{polo_molina_etal_2024_monokan}
+A.~Polo-Molina, D.~Alfaya, and J.~Portela.
+\newblock {MonoKAN}: Certified monotonic kolmogorov-arnold network.
+\newblock {\em arXiv preprint arXiv:2409.11078}, 2024.
+
+\bibitem{schick_etal_2023_toolformer}
+T.~Schick, J.~Dwivedi-Yu, R.~Dess\`i, R.~Raileanu, M.~Lomeli, L.~Zettlemoyer, N.~Cancedda, and T.~Scialom.
+\newblock Toolformer: Language models can teach themselves to use tools.
+\newblock In {\em Advances in Neural Information Processing Systems}, 2023.
+
+\bibitem{yao_etal_2023_react}
+S.~Yao, J.~Zhao, D.~Yu, N.~Du, I.~Shafran, K.~Narasimhan, and Y.~Cao.
+\newblock {ReAct}: Synergizing reasoning and acting in language models.
+\newblock In {\em International Conference on Learning Representations}, 2023.
+
+\bibitem{you_etal_2017_dln}
+S.~You, D.~Ding, K.~Canini, J.~Pfeifer, and M.~Gupta.
+\newblock Deep lattice networks and partial monotonic functions.
+\newblock In {\em Advances in Neural Information Processing Systems}, 2017.
+
+\end{thebibliography}

@@ -1,0 +1,103 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\citation{black_scholes_1973}
+\citation{merton_1973}
+\citation{hutchinson_lo_poggio_1994}
+\citation{yao_etal_2023_react}
+\citation{schick_etal_2023_toolformer}
+\citation{liu_etal_2024_kan}
+\citation{you_etal_2017_dln}
+\citation{nguyen_etal_2023_mononet}
+\citation{polo_molina_etal_2024_monokan}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Literature Review}{3}{section.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Textbook Option Pricing}{3}{subsection.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Machine Learning For Option Surfaces}{3}{subsection.14}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Narrative Information And LLMs}{3}{subsection.15}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Interpretable And Monotone Learned Control}{3}{subsection.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}Gap Addressed Here}{3}{subsection.17}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}System Architecture}{4}{section.18}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces System architecture. The LLM ingests qualitative information and maps it into a constrained DSL. The DSL drives a quantitative execution layer consisting of a Black--Scholes anchor and a SPIKAN regime/stress correction module.}}{4}{figure.20}\protected@file@percent }
+\newlabel{fig:architecture}{{1}{4}{System architecture. The LLM ingests qualitative information and maps it into a constrained DSL. The DSL drives a quantitative execution layer consisting of a Black--Scholes anchor and a SPIKAN regime/stress correction module}{figure.20}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Why This Is Not Generic Tool Calling}{5}{subsection.21}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces System roles and comparison framing.}}{5}{table.23}\protected@file@percent }
+\newlabel{tab:system_roles}{{1}{5}{System roles and comparison framing}{table.23}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Experiment Design}{5}{section.24}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Research Questions}{5}{subsection.25}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Benchmark Tiers}{6}{subsection.32}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Tier 0A: LLM $\rightarrow $ DSL curated protocol benchmark.}{6}{section*.33}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Tier 0B: LLM $\rightarrow $ DSL document-grounded protocol benchmark.}{6}{section*.34}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Tier 0C: semantic protocol stability benchmark.}{6}{section*.35}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Tier 0D: regime-action coherence benchmark.}{6}{section*.36}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Tier 0E: document-to-gold agreement benchmark.}{6}{section*.37}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Tier A: Live term-surface benchmark.}{6}{section*.38}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Tier B: Historical structural replay benchmark.}{7}{section*.39}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Models Compared}{7}{subsection.40}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Metrics}{7}{subsection.41}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Results}{7}{section.42}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}LLM $\rightarrow $ DSL Protocol Results}{7}{subsection.43}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Protocol comparison by context tier. Execution and intent rates saturate at 1.00 on the current local benchmarks, so latency is the more informative differentiator.}}{8}{figure.45}\protected@file@percent }
+\newlabel{fig:protocol_metrics}{{2}{8}{Protocol comparison by context tier. Execution and intent rates saturate at 1.00 on the current local benchmarks, so latency is the more informative differentiator}{figure.45}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Protocol benchmark comparison.}}{8}{table.47}\protected@file@percent }
+\newlabel{tab:protocol_summary}{{2}{8}{Protocol benchmark comparison}{table.47}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Representative protocol operations.}}{8}{table.49}\protected@file@percent }
+\newlabel{tab:protocol_examples}{{3}{8}{Representative protocol operations}{table.49}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Document-Grounded Protocol Results}{9}{subsection.50}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Semantic Protocol Stability}{9}{subsection.51}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Semantic protocol stability by paraphrase group. Three of four groups preserved both the same DSL action and the same executed outcome signature across paraphrases.}}{9}{figure.53}\protected@file@percent }
+\newlabel{fig:protocol_semantics}{{3}{9}{Semantic protocol stability by paraphrase group. Three of four groups preserved both the same DSL action and the same executed outcome signature across paraphrases}{figure.53}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Semantic protocol stability summary.}}{10}{table.55}\protected@file@percent }
+\newlabel{tab:protocol_semantics}{{4}{10}{Semantic protocol stability summary}{table.55}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Document-To-Gold Agreement}{10}{subsection.56}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Document-grounded agreement against human-authored gold DSL. Execution remains mostly reliable, but exact semantic agreement is much weaker than raw translation success.}}{10}{figure.58}\protected@file@percent }
+\newlabel{fig:protocol_gold_agreement}{{4}{10}{Document-grounded agreement against human-authored gold DSL. Execution remains mostly reliable, but exact semantic agreement is much weaker than raw translation success}{figure.58}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Document-to-gold agreement summary.}}{11}{table.60}\protected@file@percent }
+\newlabel{tab:protocol_gold_agreement}{{5}{11}{Document-to-gold agreement summary}{table.60}{}}
+\@writefile{toc}{\contentsline {paragraph}{Mismatch analysis.}{11}{section*.61}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Regime-Action Coherence After Anchor Calibration}{11}{subsection.62}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Raw learned backend versus explicit controller policies on regime-action coherence.}}{12}{table.64}\protected@file@percent }
+\newlabel{tab:regime_coherence}{{6}{12}{Raw learned backend versus explicit controller policies on regime-action coherence}{table.64}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Controller burden by policy after controller-v2. Lower is better.}}{12}{table.66}\protected@file@percent }
+\newlabel{tab:controller_burden}{{7}{12}{Controller burden by policy after controller-v2. Lower is better}{table.66}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.6}Supporting Quantitative Backend Results}{12}{subsection.67}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Live SLV term-surface overall price MAE. The plain-anchor SPIKAN residual hybrid is the best current live pricer.}}{13}{figure.69}\protected@file@percent }
+\newlabel{fig:live_price}{{5}{13}{Live SLV term-surface overall price MAE. The plain-anchor SPIKAN residual hybrid is the best current live pricer}{figure.69}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Live term-surface overall results.}}{13}{table.71}\protected@file@percent }
+\newlabel{tab:live_results}{{8}{13}{Live term-surface overall results}{table.71}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.7}Cross-Asset Transfer Business Cases}{13}{subsection.72}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Cross-asset live price MAE across four business cases. The transfer result is heterogeneous: the hybrid wins in oil, plain Black--Scholes wins in gold, and direct random forest wins in semiconductor and broad technology equity cases.}}{14}{figure.74}\protected@file@percent }
+\newlabel{fig:cross_asset_transfer}{{6}{14}{Cross-asset live price MAE across four business cases. The transfer result is heterogeneous: the hybrid wins in oil, plain Black--Scholes wins in gold, and direct random forest wins in semiconductor and broad technology equity cases}{figure.74}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Cross-asset business-case summary.}}{14}{table.76}\protected@file@percent }
+\newlabel{tab:cross_asset_transfer}{{9}{14}{Cross-asset business-case summary}{table.76}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.8}Historical Structural Replay}{14}{subsection.77}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Historical structural replay price MAE by regime. The IV-residual hybrid is strongest in transition and stress; plain Black--Scholes remains best in stable periods.}}{15}{figure.79}\protected@file@percent }
+\newlabel{fig:replay_price}{{7}{15}{Historical structural replay price MAE by regime. The IV-residual hybrid is strongest in transition and stress; plain Black--Scholes remains best in stable periods}{figure.79}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Replay price MAE by regime for selected models.}}{15}{table.81}\protected@file@percent }
+\newlabel{tab:replay_price}{{10}{15}{Replay price MAE by regime for selected models}{table.81}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.9}Surface Results And Secondary Diagnostics}{15}{subsection.82}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Replay overall IV reconstruction comparison.}}{15}{table.84}\protected@file@percent }
+\newlabel{tab:replay_surface}{{11}{15}{Replay overall IV reconstruction comparison}{table.84}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Discussion}{16}{section.85}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Why The LLM Layer Still Matters}{16}{subsection.86}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}What The Current Results Actually Support}{16}{subsection.87}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Limitations}{17}{section.88}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Progression And Next Architecture Step}{17}{section.97}\protected@file@percent }
+\citation{liu_etal_2024_kan}
+\citation{you_etal_2017_dln}
+\citation{nguyen_etal_2023_mononet}
+\citation{polo_molina_etal_2024_monokan}
+\@writefile{toc}{\contentsline {section}{\numberline {9}Conclusion}{18}{section.104}\protected@file@percent }
+\bibstyle{abbrv}
+\bibdata{docs/paper/references}
+\bibcite{black_scholes_1973}{1}
+\bibcite{hutchinson_lo_poggio_1994}{2}
+\bibcite{liu_etal_2024_kan}{3}
+\bibcite{merton_1973}{4}
+\bibcite{nguyen_etal_2023_mononet}{5}
+\bibcite{polo_molina_etal_2024_monokan}{6}
+\bibcite{schick_etal_2023_toolformer}{7}
+\bibcite{yao_etal_2023_react}{8}
+\bibcite{you_etal_2017_dln}{9}
+\gdef \@abspage@last{19}
