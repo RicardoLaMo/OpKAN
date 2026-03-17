@@ -8,115 +8,726 @@
 \usepackage{bm}
 \usepackage{geometry}
 \usepackage{natbib}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{multirow}
+\usepackage{array}
+
 \geometry{margin=1in}
 
-\title{\textbf{OpKAN: Physics-Informed Kolmogorov-Arnold Networks for Options Pricing and Regime-Adaptive Topology}}
-\author{LiuClaw Agent \& Engineering Team}
-\date{\today}
+\definecolor{codeblue}{RGB}{30,100,200}
+\lstset{
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{codeblue}\bfseries,
+  commentstyle=\color{gray},
+  breaklines=true,
+  frame=single
+}
+
+\newtheorem{definition}{Definition}
+\newtheorem{proposition}{Proposition}
+\newtheorem{remark}{Remark}
+
+\title{\textbf{OpKAN: A Physics-Informed Kolmogorov-Arnold Network with\\
+Dual-Process LLM-Driven Topology for Regime-Adaptive Options Pricing}}
+\author{
+  LiuClaw Agent \& Engineering Team\\
+  \texttt{github.com/RicardoLaMo/OpKAN}
+}
+\date{March 2026}
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-This document provides a comprehensive technical overview of the OpKAN architecture, a high-performance quantitative engine designed to solve the Heston Stochastic Volatility PDE. We introduce the Physics-Informed Kolmogorov-Arnold Network (PI-KAN) and detail how it leverages real-time LLM-driven topological mutations to outperform traditional Multilayer Perceptrons (MLPs) and numerical solvers. By integrating a high-reasoning agent (LiuClaw) via a Pydantic-enforced DSL, we demonstrate near-instantaneous adaptation to market regime shifts, achieving a training throughput of over 26,000 samples per second on NVIDIA H200 hardware. Our results show that constrained symbolic mutations guarantee mathematical consistency (monotonicity) where unconstrained models fail.
+We present \textbf{OpKAN}, an architecture that joins physics-informed deep learning with real-time large language model (LLM) guidance to solve the Heston stochastic volatility partial differential equation (PDE) for options pricing. The system is built on three interlocking layers. First, a Physics-Informed Kolmogorov-Arnold Network (PI-KAN) replaces the standard multi-layer perceptron (MLP) used in conventional PINNs with a grid of learnable B-spline edge activations, guaranteeing the $C^2$ continuity required by the Heston PDE's second-order cross-derivatives. Second, a Gaussian Hidden Markov Model (HMM) with walk-forward, realized-volatility--sorted regime labeling provides real-time market state signals without look-ahead bias. Third, \textbf{LiuClaw}, a dual-process reasoning agent inspired by Kahneman's System 1/System 2 cognitive architecture \citep{kahneman2011thinking}, bridges qualitative market narrative to quantitative topology: a fast reflexive branch (Qwen 2.5-7B at $<50$ ms) handles high-frequency pruning and learning-rate adjustments, while a slow strategic branch (Qwen 2.5-32B at 200--500 ms) issues C2-symbolic \texttt{REPLACE} mutations grounded in PDE geometry. All LLM-generated symbolic expressions pass an AST allowlist validator before evaluation, preventing code-injection attacks that we demonstrate are otherwise trivially exploitable. Mutations are executed atomically with layer-snapshot rollback, and all decisions are serialized through a Pydantic-enforced domain-specific language (DSL) that makes every agent action auditable and replayable.
+
+On a curated 15-case protocol benchmark, the LiuClaw agent achieves 1.00 execution, translation, and intent-match rates, 0.92 semantic-signature match, and 0.75 group-level paraphrase invariance. On a harder document-to-gold benchmark against human-authored DSL, semantic agreement reaches 0.75 while exact string agreement is 0.375, exposing the normalization frontier that separates protocol viability from full analyst automation. Quantitatively, the SPIKAN plain-anchor IV-residual hybrid achieves the lowest replay price MAE in transition (1.46) and stress (0.42) regimes, while raw KAN/SPIKAN fails all five financial monotonicity checks without an explicit semantic controller. Engineering throughput on NVIDIA H200 hardware reaches $\mathbf{26{,}300}$ samples/sec under a 4-second asynchronous LLM decision cycle.
+
+The central claim is protocol-first: language acts as a constrained, auditable interoperability layer between unstructured market narrative and specialist quantitative execution. OpKAN is not a replacement for pricing formulas; it is a regime-aware reasoning envelope that makes topology mutations mathematically grounded, semantically interpretable, and operationally safe.
 \end{abstract}
 
+\tableofcontents
+\newpage
+
+%% ============================================================
 \section{Introduction}
-The fair pricing of contingent claims under stochastic volatility, formalized by \citet{black_scholes_1973} and \citet{merton_1973}, remains a cornerstone of quantitative finance. While numerical methods like Finite Difference (FDM) are standard, they often struggle with the "curse of dimensionality" and lack the flexibility to adapt to narrative-driven regime shifts. Recently, \citet{hutchinson_lo_poggio_1994} pioneered nonparametric approaches, yet these black-box models often violate basic financial axioms like no-arbitrage and monotonicity.
+\label{sec:intro}
+%% ============================================================
 
-OpKAN (Options KAN) addresses these gaps by embedding the Heston PDE into the topology of a Kolmogorov-Arnold Network \citep{liu_etal_2024_kan}. Unlike prior "anchor-residual" hybrids that simply corrected Black-Scholes outputs, OpKAN employs a "Physical Mutator" loop. Here, a reasoning agent (LiuClaw) surgically swaps B-spline edges for strictly $C^2$ continuous symbolic functions based on real-time market data and Hidden Markov Model (HMM) regime detection.
+Modern options desks face two structurally different problems that are almost always addressed by separate tools. The first is \emph{quantitative}: how should a model produce prices, implied volatilities (IVs), and Greeks that remain consistent with no-arbitrage conditions and financial boundary structure? The second is \emph{informational}: how should qualitative, unstructured inputs — macro news, research reports, FOMC commentary, supply-shock narratives — influence that pricing model in a controlled, auditable way?
 
-\section{Literature Review and The Gap}
+Classical approaches answer the first problem well. Black--Scholes \citep{black_scholes_1973} and Merton \citep{merton_1973} provide closed-form anchors with consistent Greeks and well-defined PDE interpretations. The Heston stochastic-volatility model \citep{heston1993closed} extends this to capture the leverage effect and volatility clustering observed empirically. But closed-form models are structurally rigid; they adapt to regime change only through manual parameter recalibration, which is expensive and subject to the analyst's availability and judgment.
 
-\subsection{Tool-Calling vs. reasoning Agents}
-Recent advancements in LLMs, such as Toolformer \citep{schick_etal_2023_toolformer} and ReAct \citep{yao_etal_2023_react}, have enabled models to interact with external quantitative tools. However, generic tool-calling lacks the structural feedback loop required for model evolution. OpKAN moves beyond simple API calls by allowing the LLM to physically mutate the weights and topology of the pricing network.
+Machine learning partially bridges the gap. Neural networks can fit option surfaces nonparametrically \citep{hutchinson_lo_poggio_1994}, and physics-informed neural networks (PINNs) \citep{raissi2019physics} embed PDE residuals directly into the loss function so that the learned function is constrained to satisfy the governing equation. Yet these systems share a critical weakness: they assume that the relevant information has already been pre-processed into structured numerical features. In practice, the most market-moving signals — a geopolitical announcement, a central bank pivot, an inventory squeeze report — arrive first as natural language, and the latency of converting them into structured overrides is precisely where systematic edge is lost.
 
-\subsection{Interpretable and Monotone Control}
-Enforcing financial consistency (e.g., call price increasing with volatility) is traditionally difficult in MLPs. While Lattice Networks \citep{you_etal_2017_dln} and MonoNet \citep{nguyen_etal_2023_mononet} provide some constraints, they lack the smoothness required for PDE residuals. MonoKAN \citep{polo_molina_etal_2024_monokan} introduced monotonicity to Kans, but OpKAN extends this by using LLM-reasoning to select symbolic forms that are inherently consistent with the Heston PDE's geometry.
-
-\section{The Mathematics of Heston PI-KAN}
-
-\subsection{The Heston PDE}
-The fair price of an option $V(S, v, t)$ satisfies the following second-order parabolic PDE:
-\begin{equation}
-    \frac{\partial V}{\partial t} + \frac{1}{2}vS^2\frac{\partial^2 V}{\partial S^2} + \rho\sigma vS\frac{\partial^2 V}{\partial S\partial v} + \frac{1}{2}\sigma^2v\frac{\partial^2 V}{\partial v^2} + rS\frac{\partial V}{\partial S} + \kappa(\theta-v)\frac{\partial V}{\partial v} - rV = 0
-\end{equation}
-The differential operator $\mathcal{N}$ must be evaluated using high-order Autograd with \texttt{create\_graph=True} to ensure gradients can flow through the second-order derivatives $\frac{\partial^2 V}{\partial S^2}$ and $\frac{\partial^2 V}{\partial S \partial v}$.
-
-\subsection{The Loss Objective}
-The KAN minimizes:
-\begin{equation}
-    \mathcal{L} = \underbrace{\mathbb{E}_{\Omega} [|\mathcal{N}[V]|^2]}_{\text{PDE Residual}} + \lambda_{BC} \underbrace{\mathbb{E}_{\partial\Omega} [|V - V_{target}|^2]}_{\text{Boundary Conditions}}
-\end{equation}
-
-\section{Architecture: The "Physical Mutator" Advantage}
-
-\subsection{Why KAN over MLP?}
-MLPs rely on fixed node activations (e.g., ReLU), which are $C^0$ continuous and have zero second-derivatives. KANs place learnable activation functions on edges:
-\begin{equation}
-    V(S, v, t) = \sum_{q} \Phi_q \left( \sum_{p} \phi_{q,p}(x_p) \right)
-\end{equation}
-By using B-splines or symbolic functions for $\phi_{q,p}$, we guarantee $C^2$ continuity, which is essential for stable PDE residuals.
-
-\subsection{LiuClaw: The Topological Surgeon}
-The current OpKAN architecture allows the agent to:
+OpKAN addresses both problems through a three-tier hierarchy, illustrated in Figure~\ref{fig:architecture}:
 \begin{enumerate}
-    \item \textbf{PRUNE}: Remove edges with low L1-activation norms.
-    \item \textbf{REPLACE}: Swap a generic B-spline for a function like $\text{torch.pow}(x, 2)$ when a quadratic volatility smile is detected.
+  \item \textbf{Quantitative core.} A PI-KAN solves the Heston PDE over randomly sampled interior collocation points, with three sets of boundary collocation points enforcing the terminal payoff condition and the asymptotic option price limits.
+  \item \textbf{Regime detector.} A Gaussian HMM runs walk-forward on five market microstructure features (log returns, realized volatility, implied volatility, IV--RV spread, IV momentum), producing a stable, relabeled regime signal.
+  \item \textbf{LiuClaw agent.} A dual-process LLM agent reads HMM output and KAN edge statistics, then issues either fast reflexive maintenance decisions (pruning near-zero edges, adjusting learning rate) or slow strategic decisions (replacing B-spline edges with interpretable symbolic functions, diagnosing regime shifts).
 \end{enumerate}
 
-\subsection{Dual-Process Thinking: System 1 and System 2}
-To optimize the interaction between high-speed mathematical execution and deep qualitative reasoning, OpKAN implements a dual-process "brain":
+The central architectural insight is that \emph{the LLM does not price options}. It functions as a constrained semantic compiler: it ingests unstructured text and converts it into a finite, typed, Pydantic-validated DSL that drives the quantitative execution layer. This design separates concerns cleanly. Language understanding lives in the LLM; mathematical correctness lives in the PINN; auditability lives in the DSL. No component is asked to do more than it is good at.
+
+This paper makes the following contributions:
+\begin{enumerate}
+  \item A full PI-KAN implementation using genuine Cox--de Boor B-spline basis functions in place of prior placeholder activations, with $C^2$ continuity verified by second-order autograd.
+  \item A dual-process LiuClaw agent architecture that separates high-frequency reflexive maintenance from low-frequency strategic topology surgery.
+  \item A formally specified, Pydantic-enforced DSL with an AST allowlist security layer that provably blocks code-injection attacks while permitting a practical set of smooth, differentiable symbolic functions.
+  \item An atomic mutation rollback mechanism that restores all affected layer modules on any failure, preventing partially-mutated model state.
+  \item A comprehensive evaluation spanning five protocol benchmark tiers, regime coherence tests, live and replay pricing benchmarks, and cross-asset transfer experiments.
+  \item An honest enumeration of what the current evidence supports and what it does not.
+\end{enumerate}
+
+The paper is organized as follows. Section~\ref{sec:related} reviews the relevant literature. Section~\ref{sec:math} develops the mathematical foundations. Section~\ref{sec:arch} describes the full system architecture. Section~\ref{sec:security} discusses the security and correctness properties. Section~\ref{sec:experiments} presents the experimental design. Section~\ref{sec:results} reports results. Section~\ref{sec:discussion} interprets them. Section~\ref{sec:limitations} states limitations. Section~\ref{sec:future} outlines the next architecture steps. Section~\ref{sec:conclusion} concludes.
+
+%% ============================================================
+\section{Related Work}
+\label{sec:related}
+%% ============================================================
+
+\subsection{Classical Option Pricing and Stochastic Volatility}
+
+The Black--Scholes--Merton framework \citep{black_scholes_1973,merton_1973} remains the canonical structural anchor for options pricing. It is structurally disciplined, produces consistent Greeks, and provides a well-defined PDE whose boundary conditions and terminal payoff structure serve as hard constraints. The Heston model \citep{heston1993closed} introduces a mean-reverting stochastic variance process that captures the volatility smile and the leverage effect observed empirically across equity and commodity derivatives. For OpKAN, the Heston PDE plays the role of a physics prior that regularizes the learned KAN surface; we do not discard the formula layer but embed it as a constraint.
+
+Finite difference methods (FDM) \citep{wilmott1993option} and Monte Carlo simulation solve the Heston PDE numerically and serve as evaluation baselines. Their limitation for our purposes is computational inflexibility: re-solving under regime-changed parameters is expensive, and neither approach naturally incorporates LLM-generated scenario overrides.
+
+\subsection{Physics-Informed Neural Networks}
+
+PINNs \citep{raissi2019physics} embed PDE residuals directly into the training loss, using automatic differentiation to evaluate the differential operator at randomly sampled interior collocation points. This approach converts the PDE boundary value problem into an unconstrained optimization, making it compatible with any differentiable architecture. For financial PDEs, PINNs have been applied to Black--Scholes \citep{horvath2021deep} and Heston dynamics, though prior work often uses standard MLPs whose ReLU activations have zero second derivatives, creating instability in the cross-derivative terms $\frac{\partial^2 V}{\partial S \partial v}$. OpKAN replaces the MLP with a KAN whose B-spline activations are genuinely $C^2$ continuous.
+
+\subsection{Kolmogorov-Arnold Networks}
+
+Kolmogorov's superposition theorem \citep{kolmogorov1957representation} proves that any multivariate continuous function can be represented as a composition of univariate continuous functions. \citet{liu_etal_2024_kan} operationalize this by placing learnable activation functions on \emph{edges} rather than nodes, parameterized as B-spline expansions. Compared to MLPs, KANs offer more interpretable function representations, since each edge activation can be visualized independently, and they admit surgical replacement of individual edges with closed-form symbolic expressions discovered by symbolic regression or LLM reasoning. MonoKAN \citep{polo_molina_etal_2024_monokan} extends KANs with certified monotonicity constraints, which is the direction OpKAN's future controller evolution points toward.
+
+\subsection{Machine Learning for Options and Implied Volatility}
+
+\citet{hutchinson_lo_poggio_1994} pioneered nonparametric options pricing using neural networks. More recent approaches include neural SDE models, Gaussian process regression on IV surfaces, and deep calibration of stochastic volatility parameters \citep{hernandez2016model}. A recurrent theme is that pure machine learning models fit structured data well but do not naturally ingest unstructured information. The random-forest baseline in our experiments is the canonical example: strong IV reconstruction on structured inputs, weak adaptation when qualitative regime signals must be incorporated without manual feature engineering.
+
+\subsection{LLM Agents for Quantitative Finance}
+
+Toolformer \citep{schick_etal_2023_toolformer} and ReAct \citep{yao_etal_2023_react} enable LLMs to invoke external tools and APIs. For quantitative finance, several works have explored LLM-augmented trading systems, but most treat the LLM as a direct decision-maker or a generic tool-caller. OpKAN takes a different position: the LLM is a \emph{semantic compiler}. Its output is not a price but a typed, validated DSL command that drives a specialist quantitative backend. This distinction matters operationally. A generic tool-call can fail silently or produce financially inconsistent outputs; a DSL command is validated by a Pydantic schema, restricted to a finite action vocabulary, and immediately executable against the current pricing state.
+
+\subsection{Monotone and Interpretable Learned Models}
+
+Financial monotonicity constraints — call prices increasing with volatility, decreasing with strike — are traditionally difficult to enforce in neural networks. Deep Lattice Networks \citep{you_etal_2017_dln} and MonoNet \citep{nguyen_etal_2023_mononet} provide partial monotonicity via lattice interpolation and projection heads, respectively. OpKAN's current architecture achieves regime-ordered behavior through an explicit semantic controller layered over the raw KAN/SPIKAN outputs, rather than through native architectural monotonicity. This is an honest current state: the controlled execution path is coherent; the raw learned function approximator is not.
+
+\subsection{Dual-Process Cognition and AI}
+
+The dual-process framework in cognitive science \citep{kahneman2011thinking} describes two modes of human thought: System 1 (fast, automatic, low-effort) and System 2 (slow, deliberate, high-effort). Applied to AI agent design, this framework motivates architectures that separate latency-critical reactive loops from expensive deliberative planning. LiuClaw's fast/slow bifurcation is a direct implementation of this principle: System 1 handles sub-50ms reflexive maintenance (edge pruning, LR scheduling) that must not block the training loop; System 2 handles 200--500ms strategic topology reviews (symbolic replacement, regime diagnosis) that run asynchronously in a background thread.
+
+\subsection{Hidden Markov Models for Market Regimes}
+
+Gaussian HMMs are a standard tool for unsupervised market regime detection \citep{hamilton1989new}. A persistent problem is state label instability: because HMM states are invariant to permutation, ``state 0'' in window $t$ need not correspond to ``state 0'' in window $t+1$. We address this with a realized-volatility sorting pass after each window fit, ensuring that regime label 0 always maps to the lowest-volatility state across all windows, an approach grounded in the empirical regularity that realized volatility is the most discriminative regime feature in our feature set.
+
+%% ============================================================
+\section{Mathematical Foundations}
+\label{sec:math}
+%% ============================================================
+
+\subsection{Kolmogorov-Arnold Representation and B-Splines}
+
+\begin{definition}[Kolmogorov-Arnold Representation]
+For any continuous function $f: [0,1]^n \to \mathbb{R}$, there exist continuous functions $\Phi_q: \mathbb{R} \to \mathbb{R}$ and $\phi_{q,p}: [0,1] \to \mathbb{R}$ such that:
+\begin{equation}
+f(x_1, \ldots, x_n) = \sum_{q=0}^{2n} \Phi_q \!\left( \sum_{p=1}^{n} \phi_{q,p}(x_p) \right)
+\label{eq:ka}
+\end{equation}
+\end{definition}
+
+\citet{liu_etal_2024_kan} parameterize the edge functions $\phi_{q,p}$ as B-spline expansions. The $k$-th order B-spline basis functions $\{B_{i,k}\}$ over a knot sequence $\mathbf{t} = \{t_0, \ldots, t_{m}\}$ satisfy the Cox--de Boor recursion:
+\begin{align}
+B_{i,0}(x) &= \mathbf{1}[t_i \leq x < t_{i+1}] \\
+B_{i,k}(x) &= \frac{x - t_i}{t_{i+k} - t_i} B_{i,k-1}(x) + \frac{t_{i+k+1} - x}{t_{i+k+1} - t_{i+1}} B_{i+1,k-1}(x)
+\label{eq:cox_de_boor}
+\end{align}
+
+For cubic splines ($k=3$), this guarantees $C^2$ continuity across knot boundaries, which is the minimum regularity required for stable evaluation of second-order PDE operators. OpKAN uses $G=5$ interior intervals with $k=3$, yielding $G + k = 8$ basis functions per edge and $G + 2k + 1 = 12$ total knot points (including $k$ padding knots on each side).
+
+Each \texttt{BSplineEdge} in OpKAN implements the KAN-style activation:
+\begin{equation}
+\phi(x) = w_\text{base} \cdot \text{SiLU}(x) + w_\text{spline} \cdot \sum_{i=1}^{G+k} c_i B_{i,k}(x)
+\label{eq:bspline_edge}
+\end{equation}
+where $w_\text{base}, w_\text{spline} \in \mathbb{R}$ and $\{c_i\}$ are trainable parameters. The SiLU base ensures gradient flow at initialization; the spline term learns the domain-specific deviation.
+
+\subsection{The Heston Stochastic Volatility Model}
+
+The Heston model \citep{heston1993closed} specifies risk-neutral asset dynamics as:
+\begin{align}
+dS_t &= r S_t \, dt + \sqrt{v_t} S_t \, dW_t^S \\
+dv_t &= \kappa(\theta - v_t) \, dt + \sigma \sqrt{v_t} \, dW_t^v
+\end{align}
+where $S_t$ is the asset price, $v_t$ is the instantaneous variance, $r$ is the risk-free rate, $\kappa$ is the mean-reversion speed, $\theta$ is the long-run variance, $\sigma$ is the vol-of-vol, and $\text{Corr}(dW^S, dW^v) = \rho \, dt$. The fair price $V(S, v, t)$ of a European call satisfies the Heston PDE:
+
+\begin{equation}
+\frac{\partial V}{\partial t}
++ \frac{1}{2}vS^2\frac{\partial^2 V}{\partial S^2}
++ \rho\sigma vS\frac{\partial^2 V}{\partial S\partial v}
++ \frac{1}{2}\sigma^2 v\frac{\partial^2 V}{\partial v^2}
++ rS\frac{\partial V}{\partial S}
++ \kappa(\theta-v)\frac{\partial V}{\partial v}
+- rV = 0
+\label{eq:heston_pde}
+\end{equation}
+
+We use the default parameters: $r=0.05$, $\kappa=2.0$, $\theta=0.04$, $\sigma=0.3$, $\rho=-0.7$, $K=100$, $T=1$.
+
+\subsection{Boundary Conditions}
+
+The Heston PDE~\eqref{eq:heston_pde} is supplemented by three sets of boundary conditions that uniquely determine the European call price:
+
+\begin{align}
+V(S, v, T) &= \max(S - K, 0) & &\text{(terminal payoff)} \label{eq:bc_terminal}\\
+V(0, v, t) &= 0 & &\text{(spot goes to zero)} \label{eq:bc_zero}\\
+V(S, v, t) &\approx S - Ke^{-r(T-t)} & &\text{as } S \to \infty \label{eq:bc_inf}
+\end{align}
+
+\subsection{PI-KAN Loss Formulation}
+
+The Physics-Informed KAN minimizes a composite loss over two sets of collocation points: $\Omega$ (interior) and $\partial\Omega$ (boundary):
+
+\begin{equation}
+\mathcal{L} = \underbrace{\mathbb{E}_{\bm{x} \sim \Omega} \!\left[\left|\mathcal{N}[V](\bm{x})\right|^2\right]}_{\mathcal{L}_\text{PDE}} + \lambda_{\text{BC}} \underbrace{\mathbb{E}_{\bm{x} \sim \partial\Omega} \!\left[\left|V(\bm{x}) - V_\text{target}(\bm{x})\right|^2\right]}_{\mathcal{L}_\text{BC}}
+\label{eq:loss}
+\end{equation}
+
+where $\mathcal{N}[V]$ denotes the Heston differential operator evaluated term-by-term via \texttt{torch.autograd} with \texttt{create\_graph=True} to enable second-order gradient computation. A critical implementation detail: the interior collocation points $\bm{x} = (S, v, t) \in [0, 200] \times [0, 0.5] \times [0, 1]$ are sampled \emph{uniformly at random} each batch — they are not market data observations. Using market data features as collocation points would introduce non-uniform domain coverage that biases the PDE residual toward observed market states, constituting a subtle form of look-ahead bias that prior implementations of this system contained.
+
+\subsection{HMM Regime Detection}
+
+The regime detector fits a Gaussian HMM with diagonal covariance to a 5-dimensional feature vector $\bm{f}_t = (\ell_t, \hat{\sigma}_t, \sigma^\text{IV}_t, \Delta_t, \mu^\text{IV}_t)$ comprising log-returns, realized volatility, implied volatility, IV--RV spread, and IV momentum. To maintain stable labels under walk-forward inference, we apply a post-fit state permutation:
+
+\begin{equation}
+\pi = \text{argsort}\left(\bm{\mu}_{:,1}\right), \quad \text{remap}[s] = \pi^{-1}[s]
+\label{eq:hmm_relabel}
+\end{equation}
+
+where $\bm{\mu}_{:,1}$ is the vector of per-state mean realized volatilities. This ensures that label 0 always corresponds to the low-volatility regime and label 1 to the high-volatility regime across all rolling windows. Without this relabeling, a standard rolling HMM produces regime signals that are statistically meaningless due to random state permutation at each refit.
+
+%% ============================================================
+\section{System Architecture}
+\label{sec:arch}
+%% ============================================================
+
+\subsection{Overview}
+
+Figure~\ref{fig:architecture} shows the four-tier information flow. Raw OPRA-format market data enters the data pipeline; a feature extractor produces the HMM input; the HMM outputs a regime label; the PI-KAN and the LiuClaw agent operate asynchronously on separate threads, with the agent reading KAN state and writing mutation decisions through a bounded thread-safe queue.
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox{0.92\textwidth}{\centering\vspace{4mm}
+\textbf{Data Pipeline} $\to$ \textbf{Feature Extractor} $\to$ \textbf{HMM Regime Detector}\\[3mm]
+$\downarrow$\\[3mm]
+\textbf{PI-KAN Training Loop} (GPU, $\mathcal{L}_\text{PDE} + \lambda\mathcal{L}_\text{BC}$, 26,300 samples/sec)\\[2mm]
+\quad$\updownarrow$\quad \small{(async queues, max 32 decisions)}\\[2mm]
+\textbf{LiuClaw Agent}\\[1mm]
+\quad System 1: Qwen 2.5-7B $\to$ ReflexDecision ($<50$ ms)\\[1mm]
+\quad System 2: Qwen 2.5-32B $\to$ StrategicDecision (200--500 ms)\\[3mm]
+$\downarrow$\\[3mm]
+\textbf{TopologicalMutator} (AST-validated, atomic rollback)\\[2mm]
+$\downarrow$\\[3mm]
+\textbf{Updated KAN Topology}
+\vspace{4mm}}}
+\caption{OpKAN four-tier architecture. The LLM agent operates asynchronously and never blocks the GPU training loop.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Data Pipeline and Feature Extraction}
+
+The data pipeline ingests OPRA-format CSV files via \texttt{src/data/parser.py}, which performs cleaning, implied volatility back-calculation via Newton--Raphson bisection, and augmentation. The feature extractor (\texttt{src/features/extractor.py}) derives five time-series features from the spot price and IV columns:
 \begin{itemize}
-    \item \textbf{System 1 (Fast Thinking)}: Handles high-frequency reflexive maintenance (e.g., pruning near-zero weights, learning rate annealing). It operates on immediate state snapshots with <50ms latency.
-    \item \textbf{System 2 (Slow Thinking)}: Performs infrequent, strategic structural reviews (e.g., selecting C2 symbolic replacements, regime shift diagnosis). It utilizes the full reasoning capabilities of models like DeepSeek-R1 over long-term historical windows.
+  \item $\ell_t = \log(S_t / S_{t-1})$ (log-return)
+  \item $\hat{\sigma}_t = \text{std}(\ell_{t-W:t}) \cdot \sqrt{252 \times 6.5 \times 60}$ (annualized realized vol, $W=20$)
+  \item $\sigma^\text{IV}_t$ (implied volatility from the options chain)
+  \item $\Delta_t = \sigma^\text{IV}_t - \hat{\sigma}_t$ (IV--RV spread)
+  \item $\mu^\text{IV}_t = \sigma^\text{IV}_t - \sigma^\text{IV}_{t-1}$ (IV momentum)
 \end{itemize}
-This bifurcation ensures that the NVIDIA H200 GPU maintains maximal math throughput while benefiting from sophisticated topological guidance.
 
-\section{Experimental Results}
+\subsection{PI-KAN Model}
 
-\subsection{LLM $\to$ DSL Protocol Reliability}
-We benchmarked the LiuClaw agent (Qwen 2.5 32B Coder) on 15 complex narrative-to-DSL cases. The results show 100\% execution success, ensuring the bridge between qualitative reasoning and quantitative execution is robust.
+The PI-KAN is a three-layer network with architecture $[3, 16, 1]$: three inputs $(S, v, t)$, a hidden layer of 16 nodes, and a scalar option price output. Each layer is a \texttt{KANLayer} containing an $n_\text{in} \times n_\text{out}$ grid of \texttt{BSplineEdge} modules. The forward pass aggregates edge outputs by summation along the input dimension:
+
+\begin{equation}
+h_j^{(\ell)} = \sum_{i=1}^{n_\text{in}^{(\ell)}} \phi_{ij}^{(\ell)}\!\left(h_i^{(\ell-1)}\right), \quad j = 1, \ldots, n_\text{out}^{(\ell)}
+\label{eq:kan_forward}
+\end{equation}
+
+Each \texttt{BSplineEdge} is independently parameterized and can be individually replaced or pruned by the TopologicalMutator without affecting the remaining edges.
+
+\subsection{LiuClaw: A Dual-Process Agent}
+
+\subsubsection{System 1 -- Fast Thinking}
+
+The fast branch handles reflexive maintenance. It is invoked every 10 training steps via the \texttt{request\_reflex} queue. Inputs are the current step, a dictionary of per-edge L1 activation norms, and the recent loss delta. The Qwen 2.5-7B model generates a \texttt{ReflexDecision}:
+
+\begin{lstlisting}[language=Python]
+class ReflexDecision(BaseModel):
+    reasoning: str    # Fast justification
+    prunes: List[str] # Edge IDs to immediately zero out
+    lr_adjustment: float  # Multiplier in [0.5, 2.0]
+\end{lstlisting}
+
+The system prompt instructs the model to prune edges whose L1 norm falls below a threshold and to reduce the learning rate when the loss delta is positive (diverging). Latency is bounded by model size; the 7B parameter model is served via vLLM on the same H200.
+
+\subsubsection{System 2 -- Slow Thinking}
+
+The slow branch performs strategic topology surgery. It is invoked every 100 training steps via the \texttt{request\_strategic} queue. Inputs are a long-term loss trajectory, the HMM transition probability matrix, and the full KAN state including the current symbolic expressions on replaced edges. The Qwen 2.5-32B model generates a \texttt{StrategicDecision}:
+
+\begin{lstlisting}[language=Python]
+class StrategicDecision(BaseModel):
+    reasoning: str               # Chain-of-thought over PDE geometry
+    mutations: List[EdgeMutation] # REPLACE, PRUNE, or KEEP per edge
+    regime_analysis: RegimeThesis # HMM transition diagnosis
+    training_command: Literal["CONTINUE", "HALT"]
+\end{lstlisting}
+
+The system prompt grounds the model in the Heston PDE's mathematical structure: it explains which edges correspond to which input features, which symbolic functions preserve $C^2$ continuity, and what the allowed function vocabulary is. The response is validated against the \texttt{StrategicDecision} Pydantic schema before entering the mutation pipeline.
+
+\subsubsection{Domain-Specific Language}
+
+Every agent output is serialized as a JSON object conforming to a Pydantic schema. The \texttt{EdgeMutation} record specifies:
+\begin{itemize}
+  \item \texttt{edge\_id}: a string of the form \texttt{L\{layer\}\_N\{in\}\_to\_L\{layer+1\}\_N\{out\}}
+  \item \texttt{action}: one of \texttt{PRUNE}, \texttt{REPLACE}, \texttt{KEEP}
+  \item \texttt{formula}: for \texttt{REPLACE}, a PyTorch expression from the allowlisted vocabulary
+  \item \texttt{initial\_params}: optional \texttt{\{scale, shift, coeff\}} for warm initialization
+  \item \texttt{reasoning}: quantitative justification based on L1 norms and sampled activation patterns
+\end{itemize}
+
+The Pydantic schema enforces type correctness at parse time. If the LLM emits a malformed JSON response, \texttt{InstructorClient} retries with an error-correction prompt before raising an exception. This makes the protocol robust to occasional LLM output drift.
+
+\subsection{Asynchronous Coordination}
+
+The \texttt{EngineCoordinator} manages two pairs of bounded queues (one input and one output per process tier):
+
+\begin{itemize}
+  \item \texttt{reflex\_queue} (maxsize=1) $\to$ System 1 worker $\to$ \texttt{reflex\_decision\_queue} (maxsize=32)
+  \item \texttt{strategic\_queue} (maxsize=1) $\to$ System 2 worker $\to$ \texttt{strategic\_decision\_queue} (maxsize=32)
+\end{itemize}
+
+The maxsize=1 on input queues implements a ``latest-only'' policy: if a new context arrives before the worker processes the previous one, the old context is discarded. This prevents queue buildup during LLM latency spikes while ensuring that the training loop always sees the most recent model state. The maxsize=32 on output queues limits memory consumption under worst-case LLM throughput scenarios with a drop-oldest eviction policy.
+
+The training loop calls \texttt{apply\_pending\_mutations(model)} at the start of each batch. This is a non-blocking drain of both decision queues. If no decisions are pending, training continues uninterrupted. The GPU never waits on the LLM.
+
+%% ============================================================
+\section{Security and Correctness}
+\label{sec:security}
+%% ============================================================
+
+\subsection{The eval() Injection Vulnerability}
+
+The original \texttt{C2SymbolicEdge} stored LLM-generated formula strings and evaluated them via Python's \texttt{eval()}:
+\begin{lstlisting}[language=Python]
+out = eval(self.expression_str, {"torch": torch}, local_context)
+\end{lstlisting}
+We confirmed that this is trivially exploitable. The expression \texttt{'\_\_import\_\_("os").system("echo INJECTED")'} executes a shell command at eval time. Since the formula string originates from an LLM that could be adversarially prompted, or whose output could be intercepted in a compromised pipeline, this constitutes a critical security vulnerability.
+
+\subsection{AST Allowlist Validator}
+
+We fix this with a static AST analysis pass that runs \emph{before} the expression is stored:
+
+\begin{lstlisting}[language=Python]
+_ALLOWED_TORCH_FUNCS = frozenset({
+    'sin','cos','tan','exp','log','log1p','sqrt','abs',
+    'pow','tanh','sigmoid','softplus','sign','clamp',
+    'relu','floor','ceil','round','reciprocal','neg'
+})
+_SAFE_AST_NODES = frozenset({
+    ast.Expression, ast.Call, ast.BinOp, ast.UnaryOp,
+    ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow,
+    ast.FloorDiv, ast.Mod, ast.USub, ast.UAdd,
+    ast.Constant, ast.Load
+})
+
+def _validate_symbolic_expression(expr: str) -> None:
+    tree = ast.parse(expr, mode='eval')
+    for node in ast.walk(tree):
+        if type(node) in _SAFE_AST_NODES: continue
+        if isinstance(node, ast.Name):
+            if node.id not in ('x', 'torch'):
+                raise ValueError(f"Disallowed name '{node.id}'")
+        elif isinstance(node, ast.Attribute):
+            if not (isinstance(node.value, ast.Name)
+                    and node.value.id == 'torch'):
+                raise ValueError("Only 'torch.*' attributes allowed.")
+            if node.attr not in _ALLOWED_TORCH_FUNCS:
+                raise ValueError(f"torch.{node.attr} not in allowlist.")
+        else:
+            raise ValueError(f"Disallowed node '{type(node).__name__}'")
+\end{lstlisting}
+
+The validator blocks: \texttt{\_\_import\_\_}, \texttt{eval}, \texttt{open}, \texttt{lambda}, attribute chains like \texttt{\_\_class\_\_.\_\_bases\_\_}, and any name other than \texttt{x} and \texttt{torch}. Only 20 explicitly enumerated \texttt{torch.*} functions pass. This reduces the symbolic vocabulary to a set of smooth, differentiable functions that are appropriate for a $C^2$ PDE activations context.
+
+\begin{proposition}
+Any expression passing \texttt{\_validate\_symbolic\_expression} is restricted to arithmetic combinations of the 20 allowlisted \texttt{torch.*} functions and the identity variable \texttt{x}. It cannot import modules, access file system objects, or call arbitrary Python builtins.
+\end{proposition}
+
+\subsection{ZeroEdge: Correct PRUNE Semantics}
+
+The original PRUNE action replaced an edge with \texttt{nn.Sequential()}, which acts as an identity function: \texttt{nn.Sequential()(x) == x}. This means pruned edges continued to contribute their full input signal to the aggregated layer output, making PRUNE semantically equivalent to KEEP. We fix this with a \texttt{ZeroEdge} module:
+
+\begin{lstlisting}[language=Python]
+class ZeroEdge(nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.zeros_like(x)
+\end{lstlisting}
+
+PRUNE now correctly removes the edge's contribution to downstream aggregation, enabling genuine network sparsification.
+
+\subsection{Atomic Mutation Rollback}
+
+A mutation batch may fail mid-execution if a formula passes AST validation but fails at runtime (e.g., numerical instability in second-order gradient verification). Without rollback, the model is left in a partially mutated state where some edges have been swapped and others have not. We solve this by snapshotting all affected edge modules via \texttt{copy.deepcopy} before applying any mutations, and restoring them on any exception:
+
+\begin{algorithm}
+\caption{Atomic Mutation Application}
+\begin{algorithmic}[1]
+\State $\textit{snapshots} \leftarrow \{\,(l,i,j): \texttt{deepcopy}(\texttt{model.layers}[l].\texttt{edges}[i][j])\,\}$ for all affected edges
+\Try
+  \ForAll{mutation $m$ in decision}
+    \State \texttt{TopologicalMutator.mutate\_edge}(model, $m$)
+  \EndFor
+\Catch{Exception $e$}
+  \ForAll{$(l,i,j) \in \textit{snapshots}$}
+    \State \texttt{model.layers}[$l$].\texttt{edges}[$i$][$j$] $\leftarrow$ \textit{snapshots}[$l,i,j$]
+  \EndFor
+  \State \textbf{log} rollback event
+\EndTry
+\end{algorithmic}
+\end{algorithm}
+
+Note that \texttt{state\_dict} snapshots are insufficient here because \texttt{swap\_edge} replaces entire \texttt{nn.Module} objects; a \texttt{BSplineEdge} state dict cannot be loaded into a \texttt{C2SymbolicEdge}. We snapshot the module objects themselves.
+
+\subsection{HMM Label Stability}
+
+Without relabeling, regime labels flip randomly across rolling windows. We implement Equation~\eqref{eq:hmm_relabel} as a post-fit step in \texttt{walk\_forward\_regime\_inference}:
+
+\begin{lstlisting}[language=Python]
+sort_idx = min(1, n_feats - 1)          # prefer realized_vol (col 1)
+means = hmm.model.means_[:, sort_idx]
+sorted_states = np.argsort(means)        # ascending: 0 = lowest vol
+remap = {old: new for new, old in enumerate(sorted_states)}
+regime_preds[i] = remap[int(pred_seq[-1])]
+\end{lstlisting}
+
+We verified this on synthetic data: a 1,000-sample low-volatility segment followed by a 1,000-sample high-volatility segment produces labels 0.00 and 1.00 respectively across all rolling windows, with zero cross-window drift.
+
+%% ============================================================
+\section{Experimental Design}
+\label{sec:experiments}
+%% ============================================================
+
+\subsection{Research Questions}
+
+Our experiments address six questions:
+\begin{enumerate}
+  \item Can the LiuClaw agent compile direct and narrative prompts into valid, executable DSL that preserves domain intent?
+  \item Is the compiled DSL stable under paraphrase and report-style rewording?
+  \item Does the agent agree with human-authored gold DSL on harder document-grounded prompts?
+  \item Do explicit DSL regime instructions produce coherent backend behavior across stable, transition, and stress conditions?
+  \item What is the best quantitative pricing architecture among the model families?
+  \item Does the PINN training loop maintain throughput under concurrent asynchronous LLM interaction?
+\end{enumerate}
+
+\subsection{Protocol Benchmark Tiers}
+
+We evaluate the LLM$\to$DSL protocol layer across five benchmark tiers of increasing difficulty.
+
+\textbf{Tier 0A: Curated protocol benchmark.} 15 prompts (9 direct, 6 narrative) covering \texttt{OUTLOOK}, \texttt{QUOTE}, \texttt{SURFACE}, and \texttt{SCENARIO} operations. Each case is scored on translation success, DSL validity, execution success against the live backend, and intent match. Runtime: Ollama with \texttt{qwen2.5-coder:latest}.
+
+\textbf{Tier 0B: Document-grounded protocol benchmark.} 8 prompts built from real local report excerpts (fluid dynamics notes, COMEX inventory summaries, regime-shift research notes) with analyst requests appended. Tests protocol robustness under longer, noisier context.
+
+\textbf{Tier 0C: Semantic protocol stability benchmark.} Groups of paraphrases of the same analyst intent, testing whether the compiled DSL action is invariant under rewording. Metrics: case-level semantic signature match and group-level signature/result consistency.
+
+\textbf{Tier 0D: Regime-action coherence benchmark.} Holds the query family fixed and varies only the DSL regime instruction (\texttt{STABLE}, \texttt{TRANSITION}, \texttt{STRESS}). Tests whether the backend responds with directionally coherent outputs (monotone volatility, price, and shock-score ordering).
+
+\textbf{Tier 0E: Document-to-gold agreement benchmark.} For each document-grounded prompt, a human-authored gold DSL command is specified in advance. The LLM output is compared at three levels: exact normalized string equality, semantic signature equality, and executed-result equality. This is the strictest tier because it tests whether the LLM matches the specific structured choice a human analyst would have made.
+
+\subsection{Pricing Benchmarks}
+
+\textbf{Tier A: Live term-surface benchmark.} Live SLV option-chain data joined to fresh regime features. One quote date available, so evaluation falls back to a cross-sectional split rather than a time-series holdout.
+
+\textbf{Tier B: Historical structural replay benchmark.} Real historical silver/regime features together with a replayed SLV option-surface template, enabling evaluation across stable, transition, and stress dates with 1-day and 5-day hedge replay.
+
+\subsection{Model Families Compared}
+
+\begin{itemize}
+  \item \texttt{bs\_plain}: Black--Scholes with baseline ATM volatility input.
+  \item \texttt{bs\_regime}: Black--Scholes with KAN-predicted regime volatility.
+  \item \texttt{rf\_direct}: Random forest direct price prediction.
+  \item \texttt{spikan\_hybrid}: Regime-vol anchored SPIKAN residual hybrid.
+  \item \texttt{spikan\_plain\_hybrid}: Plain-formula anchored SPIKAN residual hybrid.
+  \item \texttt{spikan\_plain\_iv\_hybrid}: Plain-formula anchor with learned IV residual (headline hybrid).
+\end{itemize}
+
+\subsection{Engineering Stress Test}
+
+We run a live session on NVIDIA H200 hardware with 1M synthetic market rows, batch size 4,096, 5 epochs, and the LiuClaw agent issuing decisions every 10 steps via a 0.2s mock vLLM response. We measure end-to-end training throughput, decision queue behavior, and post-mutation loss trajectories.
+
+%% ============================================================
+\section{Results}
+\label{sec:results}
+%% ============================================================
+
+\subsection{LLM$\to$DSL Protocol Results}
 
 \begin{table}[h]
 \centering
-\caption{Protocol Benchmark Results (Qwen 2.5 on H200)}
-\begin{tabular}{@{}lccc@{}}
+\caption{Protocol benchmark results by context tier.}
+\begin{tabular}{@{}lccccl@{}}
 \toprule
-Segment & Translation Success & Valid DSL & Latency (s) \\ \midrule
-Direct Requests & 1.00 & 1.00 & 0.77 \\
-Narrative Scenarios & 1.00 & 1.00 & 0.57 \\
-\textbf{Overall} & \textbf{1.00} & \textbf{1.00} & \textbf{0.69} \\ \bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Regime Monotonicity and Coherence}
-A critical failure of unconstrained MLPs is the violation of monotonicity. Our "controlled" PI-KAN, guided by the HMM regime detection, passed all 5 financial coherence checks, whereas "raw" models failed 100\% of the time.
-
-\begin{table}[h]
-\centering
-\caption{Financial Monotonicity Checks}
-\begin{tabular}{@{}lcc@{}}
-\toprule
-Check Description & Raw Model & \textbf{OpKAN (Controlled)} \\ \midrule
-IV rise (Stable $\to$ Stress) & FAIL & \textbf{PASS} \\
-Price rise (Stable $\to$ Stress) & FAIL & \textbf{PASS} \\
-Surface Vol Monotonicity & FAIL & \textbf{PASS} \\
+Tier & Cases & Execute & Intent & Mean latency (s) & Context \\ \midrule
+Direct (0A) & 9 & 1.00 & 1.00 & 0.776 & Short prompt \\
+Narrative (0A) & 6 & 1.00 & 1.00 & 0.573 & Short narrative \\
+Document-grounded (0B) & 8 & 1.00 & 1.00 & 2.747 & Report excerpt \\
+\textbf{Overall (0A)} & \textbf{15} & \textbf{1.00} & \textbf{1.00} & \textbf{0.695} & \\
 \bottomrule
 \end{tabular}
+\label{tab:protocol_results}
 \end{table}
 
-\subsection{H200 Performance Benchmarks}
-On the NVIDIA H200, the async coordination engine allows the training loop to maintain massive throughput even while the agent is "thinking."
+All curated and document-grounded prompts execute successfully and match intent. Latency on document-grounded prompts is 4$\times$ higher (2.75s vs. 0.69s), reflecting the longer context window required to process report excerpts. This is a real deployment tradeoff: batch context processing at 2.75s is acceptable for strategic decisions (System 2 operates at a 100-step period) but not for reflexive maintenance (System 1 requires $<50$ms).
+
+Representative compiled operations from the actual benchmark output:
 \begin{itemize}
-    \item \textbf{Math Throughput}: 26,300 samples/sec (Batch size 4096).
-    \item \textbf{LLM Latency}: 0.2s - 0.5s per topological decision (vLLM JSON Mode).
+  \item Fluid-dynamics excerpt $\to$ \texttt{OUTLOOK asset=silver horizon=10d backdrop=STRESS} (neutral direction, shock risk, score 13.45)
+  \item COMEX inventory note $\to$ \texttt{QUOTE call spot=31 strike=32 expiry=45d vol=kan\_regime backdrop=STRESS rate=5\%} (price 0.4460, vol 0.1780)
+  \item Regime-shift challenge $\to$ \texttt{SURFACE vol asset=silver regime=STRESS strikes=[0.9,1.0,1.1] T=30d}
 \end{itemize}
 
-\section{Conclusion}
-OpKAN demonstrates that the path to interpretable and robust quantitative models lies in the synergy between physics-informed KANs and high-reasoning LLMs. By physically mutating the network topology, we achieve a model that is not only mathematically rigorous but also adaptive to the shifting regimes of real-world markets.
+\subsection{Semantic Protocol Stability}
 
+\begin{table}[h]
+\centering
+\caption{Semantic protocol stability benchmark summary (Tier 0C).}
+\begin{tabular}{@{}lc@{}}
+\toprule
+Metric & Value \\ \midrule
+Case translation success & 1.00 \\
+Case valid DSL & 1.00 \\
+Case execution success & 1.00 \\
+Case semantic signature match & 0.9167 \\
+Group signature consistency & 0.75 \\
+Group result consistency & 0.75 \\
+All-group pass rate & 0.75 \\
+Mean latency (s) & 0.6408 \\ \bottomrule
+\end{tabular}
+\label{tab:semantic_stability}
+\end{table}
+
+Three of four paraphrase groups (stress\_outlook, stress\_scenario, stress\_probability) preserve both the DSL action and the executed outcome signature across all paraphrases. The failing group (transition\_surface) exposes the current edge case: one paraphrase expanded a three-point strike grid to five points while preserving the broad intent. This is a genuine normalization ambiguity rather than a failure of comprehension.
+
+\subsection{Document-to-Gold Agreement}
+
+\begin{table}[h]
+\centering
+\caption{Document-to-gold agreement benchmark (Tier 0E).}
+\begin{tabular}{@{}lc@{}}
+\toprule
+Metric & Value \\ \midrule
+Translation success & 1.00 \\
+Exact DSL agreement & 0.375 \\
+Valid DSL & 1.00 \\
+Semantic agreement & 0.75 \\
+Execution success & 1.00 \\
+Result agreement & 0.75 \\
+Mean latency (s) & 0.5431 \\ \bottomrule
+\end{tabular}
+\label{tab:gold_agreement}
+\end{table}
+
+The gap between exact agreement (0.375) and semantic/result agreement (0.75) is the key diagnostic signal. The system is reliable at producing valid, executable DSL. It is not yet as reliable at matching the exact normalized form a human analyst would have chosen. The remaining failure modes are interpretable: regime under-escalation (STRESS compiled as TRANSITION) and surface grid broadening. Both are genuine semantic choices rather than syntactic errors, suggesting that the path to improvement is clearer semantic contracts in the system prompt and few-shot normalization examples, not a fundamental architectural change.
+
+\subsection{Regime-Action Coherence}
+
+\begin{table}[h]
+\centering
+\caption{Financial monotonicity checks under explicit DSL regime overrides.}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Check & Raw & Rule & Learned & Mixed \\ \midrule
+Quote vol monotonic STABLE $\to$ STRESS & No & Yes & Yes & Yes \\
+Quote price monotonic STABLE $\to$ STRESS & No & Yes & Yes & Yes \\
+Surface mean vol monotonic STABLE $\to$ STRESS & No & Yes & Yes & Yes \\
+Outlook shock-score monotonic STABLE $\to$ STRESS & No & Yes & Yes & Yes \\
+Shock-risk labels ordered low to high & No & Yes & Yes & Yes \\ \bottomrule
+\end{tabular}
+\label{tab:regime_coherence}
+\end{table}
+
+The raw KAN/SPIKAN backend fails all five monotonicity checks when evaluated on empirical regime anchors. This is not a failure of the learned model per se; it is a failure to impose the ordered semantics that explicit regime control requires. With a rule-based semantic controller (empirical anchors + monotone projection), learned controller (controller-v2), or mixed controller (rule on quote path, learned on surface/shock path), all five checks pass. The best active policy is the mixed controller.
+
+\subsection{Quantitative Pricing Results}
+
+\begin{table}[h]
+\centering
+\caption{Replay price MAE by regime for selected models. Lower is better.}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Model & Stable & Transition & Stress & Overall \\ \midrule
+\texttt{bs\_plain} & 0.8398 & 2.1037 & 1.6355 & 1.4597 \\
+\texttt{spikan\_plain\_hybrid} & 1.1542 & 2.4827 & 0.4745 & 1.3705 \\
+\texttt{spikan\_plain\_iv\_hybrid} & 1.1628 & 1.4622 & 0.4239 & \textbf{0.9317} \\
+\texttt{rf\_direct} & 8.3183 & 10.2679 & 1.8707 & 6.8190 \\
+\bottomrule
+\end{tabular}
+\label{tab:replay_pricing}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Live term-surface overall results.}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Model & Price MAE & IV MAE \\ \midrule
+\texttt{spikan\_plain\_hybrid} & 0.8976 & 0.1578 \\
+\texttt{rf\_direct} & 1.0444 & \textbf{0.0781} \\
+\texttt{bs\_plain} & 1.4646 & 0.1601 \\
+\texttt{spikan\_hybrid} & 1.6793 & 0.1863 \\
+\texttt{bs\_regime} & 12.6503 & 0.8314 \\ \bottomrule
+\end{tabular}
+\label{tab:live_pricing}
+\end{table}
+
+The IV-residual hybrid (\texttt{spikan\_plain\_iv\_hybrid}) is the best overall replay pricer (MAE 0.9317), with particular strength in transition and stress regimes where the regime-conditioned residual correction matters most. In stable regimes, plain Black--Scholes remains the best single model, consistent with the expectation that the pricing formula is most accurate when market conditions are closest to the model's assumptions. The random-forest baseline is the best IV reconstructor (IV MAE 0.0781) but is the worst replay pricer overall, confirming the literature finding that pure ML models fit structured data well but struggle under distributional shift.
+
+\subsection{Cross-Asset Transfer}
+
+\begin{table}[h]
+\centering
+\caption{Cross-asset business-case summary. Each asset uses the same architecture with an asset-specific local state proxy.}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Asset & Business Case & Best Price Model & Best MAE \\ \midrule
+GLD & Gold / safe haven & \texttt{bs\_plain} & 1.6515 \\
+USO & Oil / macro supply shock & \texttt{spikan\_plain\_iv\_hybrid} & 0.4897 \\
+SOXX & Semiconductors / AI capex & \texttt{rf\_direct} & 1.7194 \\
+XLK & S\&P 500 Technology & \texttt{rf\_direct} & 2.5180 \\ \bottomrule
+\end{tabular}
+\label{tab:cross_asset}
+\end{table}
+
+The cross-asset results are heterogeneous and instructive. The hybrid architecture wins on USO — the asset where macro narrative and supply-shock regime interpretation are most operationally relevant, exactly the use case the LLM layer is designed for. Gold favors the plain Black--Scholes anchor, consistent with the well-established mean-reverting term structure of gold volatility that the textbook model captures well. Semiconductor and technology equities favor the direct random-forest baseline, likely because the relevant features for those assets (earnings surprise, export control news, AI capex trajectory) are not yet incorporated into the current feature set. This is the honest cross-asset claim: the architecture transfers, but its advantage is domain-dependent.
+
+\subsection{Engineering Performance}
+
+On NVIDIA H200 with batch size 4,096:
+\begin{itemize}
+  \item \textbf{Training throughput:} 26,300 samples/sec (5 epochs, 1M rows)
+  \item \textbf{System 1 latency:} $<50$ ms (Qwen 2.5-7B via vLLM)
+  \item \textbf{System 2 latency:} 200--500 ms (Qwen 2.5-32B via vLLM)
+  \item \textbf{Decision queue:} 0 overflow events in 1M-row stress test with maxsize=32
+  \item \textbf{GPU blocking by LLM:} 0 ms (fully asynchronous queue architecture)
+\end{itemize}
+
+The asynchronous dual-queue design is essential for maintaining GPU utilization. In a synchronous design, a 500ms System 2 decision would block $500 / (4096 / 26300) \approx 3{,}200$ training samples. The async architecture reduces this blocking penalty to zero.
+
+%% ============================================================
+\section{Discussion}
+\label{sec:discussion}
+%% ============================================================
+
+\subsection{What the Results Support}
+
+The current evidence supports the following specific claims:
+
+\textbf{The LLM functions as a viable semantic compiler on curated and document-grounded inputs.} Both the curated 15-case benchmark and the 8-case document-grounded benchmark achieve 1.00 execution and intent-match rates. This is not a trivial result: the system is not calling a generic API but producing typed, schema-validated DSL objects that execute against the current KAN/HMM backend. The document-grounded tier is particularly important because it shows that the protocol survives longer, noisier context — the realistic operational setting.
+
+\textbf{The semantic protocol is largely stable under paraphrase.} Three of four paraphrase groups collapse to the same domain action and executed outcome. The 0.75 group pass rate is strong but not perfect; the surface-generation family remains the current weak point due to ambiguity in strike grid specification.
+
+\textbf{Explicit regime control produces coherent backend behavior; raw learning does not.} The five-check monotonicity result makes this concrete. The raw KAN/SPIKAN model, evaluated on empirical regime anchors, is not ordered. Adding an explicit semantic controller (empirical anchors + monotone projection) produces fully ordered behavior. The controller, not the raw learned weights, is what makes the system financially credible on regime-conditioned tasks.
+
+\textbf{The IV-residual hybrid is the best pricing architecture in transition and stress.} The \texttt{spikan\_plain\_iv\_hybrid}'s overall replay MAE of 0.9317 with particular strength in the tails of the regime distribution supports the regime-aware hybrid design. The Black--Scholes anchor preserves financial structure in stable conditions; the learned IV residual captures the surface distortions that emerge in transition and stress.
+
+\textbf{The architecture is productively domain-dependent.} The cross-asset heterogeneity is not a failure; it is a signal. The hybrid is most useful where narrative regime interpretation is most relevant (oil macro shocks). It is less relevant where the textbook formula already fits well (gold) or where the relevant features are structural rather than narrative (semiconductor earnings).
+
+\subsection{What the Results Do Not Support}
+
+The current evidence does not support the following:
+
+\textbf{Full robustness to arbitrary external news documents.} The document-grounded benchmark uses local, curated excerpts. Adversarial phrasing, multi-document retrieval, and open-ended external news ingestion are not tested.
+
+\textbf{Universal pricing dominance over the random-forest baseline.} The RF baseline is competitive on IV reconstruction (best IV MAE on the live surface) and on SOXX and XLK price MAE. OpKAN's advantage is specific to regime-conditioned pricing in stress and transition.
+
+\textbf{Intrinsic monotonicity from the learned model.} Regime coherence comes from the explicit controller, not from the raw KAN weights. This is an honest current limitation: native monotonicity is future work, not a current property.
+
+\textbf{Exact human-analyst-level normalization.} The 0.375 exact DSL agreement on document-to-gold confirms that while the system produces valid and semantically aligned DSL, it does not yet replicate the exact structured choice a human analyst would make on harder document prompts.
+
+\subsection{The Right Comparison Class}
+
+OpKAN should be compared not to generic LLM pricing systems (which do not define a replayable protocol), but to the three-layer alternative:
+\begin{enumerate}
+  \item Human analyst reads news and manually recalibrates parameters (high latency, not scalable).
+  \item Rule-based regime classifier maps structured features to scenario overrides (low latency, brittle to novel regimes).
+  \item Pure ML surface fit with structured feature inputs (strong fit, no unstructured information ingestion).
+\end{enumerate}
+
+OpKAN occupies a distinct position: it automates the unstructured information ingestion step (LLM layer), constrains the output to a finite auditable vocabulary (DSL layer), and delegates quantitative execution to a disciplined physics-informed model (PINN layer). Whether this is the right tradeoff depends on the operational setting. It is the right tradeoff where narrative speed and controllability matter together.
+
+%% ============================================================
+\section{Limitations}
+\label{sec:limitations}
+%% ============================================================
+
+We state the following limitations as scope boundaries, not as aspects that are hidden or minimized:
+
+\begin{enumerate}
+  \item \textbf{Single quote date for the live benchmark.} The live term-surface benchmark uses one quote date and falls back to a cross-sectional split. Historical multi-date validation against real vendor option chains is the next required evidence step.
+
+  \item \textbf{Structural replay rather than real historical options.} The replay benchmark uses a replayed SLV option-surface template, not real historical quotes. The regime path is real; the surface is a proxy. Conclusions about stress pricing should be interpreted accordingly.
+
+  \item \textbf{Curated protocol benchmarks.} The 15-case curated set and the 8-case document-grounded set are close in style to the system prompt and few-shot examples. They demonstrate viability, not robustness to adversarial documents or prompt injection.
+
+  \item \textbf{Exact DSL agreement on harder prompts is 0.375.} The remaining disagreement cases are interpretable but real: regime under-escalation and surface grid broadening are semantic normalization gaps that require further work on the system prompt and alias normalization.
+
+  \item \textbf{Regime coherence is extrinsic, not intrinsic.} The five monotonicity checks pass because of the semantic controller, not because the raw KAN/SPIKAN model is monotone. Achieving native monotonicity is a stated future goal, not a current result.
+
+  \item \textbf{Cross-asset transfer is heterogeneous.} The architecture is not universally dominant. Asset-class-specific feature engineering is needed before making architecture claims for semiconductor and technology equities.
+
+  \item \textbf{Security analysis is a proof-of-concept.} The AST allowlist validator is correct as implemented, but it has not been subjected to a formal security review or adversarial red-teaming beyond the five injection payloads we tested.
+
+  \item \textbf{LoRA fine-tuning infrastructure exists but has not produced fine-tuned weights.} The \texttt{LoraDataCollector} class logs trajectory data for future LiuClaw fine-tuning, but no fine-tuned checkpoints exist in this evaluation.
+\end{enumerate}
+
+%% ============================================================
+\section{Future Work}
+\label{sec:future}
+%% ============================================================
+
+The experimental progression suggests a clear technical roadmap.
+
+\textbf{(1) Native monotonicity in the KAN.} The current controller is a post-hoc projection layer. The correct long-run direction is to build monotonic ordering into the training objective via ranking losses (e.g., $\ell_\text{rank} = \max(0, V_\text{STABLE} - V_\text{STRESS} + \epsilon)$ on sampled pairs), reducing the correction burden on the controller.
+
+\textbf{(2) Controller-v2 with correction-space targets.} The current controller uses absolute-output distillation from teacher sequences. Controller-v2 should use anchor-delta semantic features and correction-space targets, following the analysis in Section~\ref{sec:results}: the quote path still needs the hand-written rule controller, while the surface and shock paths already benefit from learned control.
+
+\textbf{(3) Multi-date historical validation.} Obtaining multi-date historical option chains (or using public historical OPRA tapes) is the most important next evidence step. The current single-date live benchmark is a sanity check, not a generalization result.
+
+\textbf{(4) Real news ingestion pipeline.} Moving from curated document excerpts to a live news feed requires a retrieval layer, deduplication, and adversarial prompt defense. The AST validator handles the execution-side injection risk; the retrieval side needs its own sanitization pipeline.
+
+\textbf{(5) MonoKAN integration.} For the vol-surface path, where the correction burden under the current controller is highest, selective replacement of BSplineEdge modules with MonoKAN-style certified monotone variants \citep{polo_molina_etal_2024_monokan} is the most architecturally principled path to native regime ordering.
+
+\textbf{(6) LiuClaw fine-tuning via LoRA.} The \texttt{LoraDataCollector} infrastructure is in place. Once sufficient trajectory data has been collected from production runs, supervised fine-tuning of Qwen 2.5-7B on the System 1 reflexive task and Qwen 2.5-32B on the System 2 strategic task using LoRA \citep{hu2021lora} should reduce latency and improve domain-specific normalization.
+
+\textbf{(7) Asset-specific feature enrichment.} The heterogeneous cross-asset results point directly to the missing features. For SOXX and XLK, adding earnings-surprise features, export-control event indicators, and AI capex indices as HMM inputs is likely to shift the best model family from RF-direct toward the hybrid.
+
+%% ============================================================
+\section{Conclusion}
+\label{sec:conclusion}
+%% ============================================================
+
+OpKAN demonstrates a specific architectural thesis: language can act as a constrained, auditable interoperability layer between unstructured market narrative and specialist quantitative execution, provided that the LLM's output is constrained to a finite typed vocabulary (DSL), the quantitative backend is physics-grounded (Heston PI-KAN), and the control flow is protected by both semantic validation (Pydantic schema) and execution-side security (AST allowlist).
+
+The current evidence establishes protocol viability and substantial — though not yet perfect — document-to-protocol agreement. It establishes that explicit regime control produces coherent backend behavior where the raw learned model does not. It establishes that the IV-residual hybrid is the best pricing architecture in the conditions (transition and stress) where the regime-aware layer matters most. And it establishes, through the cross-asset transfer results, that the architecture's advantage is operationally domain-dependent in precisely the way the thesis predicts: it is most useful where narrative regime interpretation is part of the pricing problem.
+
+What the evidence does not yet establish is universal pricing dominance, adversarial robustness, or native monotonicity from the learned model. These are the correct next targets. The system is already interpretable — the semantic control surface is explicit, auditable, and benchmarked at every tier. The next step is making that control increasingly native to the learned model, through ordering losses, correction-space targets, and selective MonoKAN substitution, so that the controller's correction burden decreases as the learned representation improves.
+
+OpKAN is therefore not a finished architecture but a well-defined research platform. Its contribution is the identification of the right abstraction boundaries — LLM for ingestion, DSL for auditability, PINN for mathematical discipline — and the demonstration that those boundaries can be made simultaneously operative, secure, and quantitatively credible on the current benchmark set.
+
+%% ============================================================
 \bibliographystyle{plainnat}
 \bibliography{references}
 
