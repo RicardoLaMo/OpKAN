@@ -33,30 +33,6 @@ class ScenarioPlan(BaseModel):
 # TUI Components
 # ---------------------------------------------------------------------------
 
-class StoryPanel(Static):
-    """The static/narrative sidebar describing the OpKAN project with Unicode Math."""
-    def on_mount(self) -> None:
-        self.update_story()
-
-    def update_story(self):
-        story_md = """
-# 🛡️ OpKAN Deep-Dive
-**Physics-Informed KAN for Options**
-
-### 1. The Math (Heston PDE)
-∂V/∂t + ½vS² ∂²V/∂S² + ρσvS ∂²V/∂S∂v + 
-½σ²v ∂²V/∂v² + rS ∂V/∂S + κ(θ-v) ∂V/∂v - rV = 0
-
-### 2. KAN vs MLP
-- **B-splines (C² smooth)**: Essential for 2nd order residuals.
-- **Symbolic Mutation**: LiuClaw discovers physics-aligned formulas.
-
-### 3. Dual-Process Brain
-- **System 1**: Reflexive pruning (Fast).
-- **System 2**: Strategic Review (Slow).
-"""
-        self.update(Markdown(story_md))
-
 class MetricCard(Static):
     """A small card showing a single metric with business context."""
     value = reactive("0")
@@ -101,7 +77,7 @@ class OpKANDashboard(App):
         background: #050505;
     }
     #sidebar {
-        width: 40;
+        width: 30;
         background: #0a0a0a;
         padding: 1;
         border-right: double green;
@@ -114,10 +90,12 @@ class OpKANDashboard(App):
     #main-content {
         padding: 1;
     }
-    #metrics-grid {
-        height: 14;
-        grid-size: 4 2;
-        grid-gutter: 1;
+    #sidebar Vertical {
+        height: 1fr;
+    }
+    #sidebar MetricCard {
+        height: 6;
+        margin-bottom: 1;
     }
     #plots-grid {
         height: 1fr;
@@ -133,7 +111,7 @@ class OpKANDashboard(App):
     }
     #brain-panel {
         height: 7;
-        margin-top: 1;
+        margin-bottom: 1;
     }
     """
     
@@ -157,19 +135,17 @@ class OpKANDashboard(App):
         yield Header(show_clock=True)
         with Horizontal():
             with Vertical(id="sidebar"):
-                yield StoryPanel()
                 yield BrainStatus(id="brain-panel")
+                yield MetricCard(title="Market Context", subtitle="LLM Decoded", id="card-regime")
+                yield MetricCard(title="Pricing Velocity", unit="opts/s", subtitle="H200 Inference", id="card-tput")
+                yield MetricCard(title="PDE Error (MSE)", subtitle="Physics Gap", id="card-loss")
+                yield MetricCard(title="Option Price", unit="$", subtitle="Market Value", id="card-price")
+                yield MetricCard(title="Delta (Δ)", subtitle="Price Sensitivity", id="card-delta")
+                yield MetricCard(title="Gamma (Γ)", subtitle="Delta Sensitivity", id="card-gamma")
+                yield MetricCard(title="Vega (ν)", subtitle="Vol Sensitivity", id="card-vega")
+                yield Static(Panel("[bold yellow]H200 GPU[/]\n[dim]Utilization: 92%[/]", title="Compute Status", border_style="blue"))
+            
             with Vertical(id="main-content"):
-                with Grid(id="metrics-grid"):
-                    yield MetricCard(title="Pricing Velocity", unit="opts/s", subtitle="H200 Inference", id="card-tput")
-                    yield MetricCard(title="PDE Error (MSE)", subtitle="Physics Gap", id="card-loss")
-                    yield MetricCard(title="Option Price", unit="$", subtitle="Market Value", id="card-price")
-                    yield MetricCard(title="Market Regime", subtitle="LLM Decoded", id="card-regime")
-                    yield MetricCard(title="Delta (Δ)", subtitle="Price Sensitivity", id="card-delta")
-                    yield MetricCard(title="Gamma (Γ)", subtitle="Delta Sensitivity", id="card-gamma")
-                    yield MetricCard(title="Vega (ν)", subtitle="Vol Sensitivity", id="card-vega")
-                    yield Static(Panel("[bold yellow]H200 GPU[/]\n[dim]Utilization: 92%[/]", title="Compute Status", border_style="blue"))
-                
                 with Grid(id="plots-grid"):
                     yield PlotextPlot(id="loss-plot", classes="plot-container")
                     yield PlotextPlot(id="price-plot", classes="plot-container")

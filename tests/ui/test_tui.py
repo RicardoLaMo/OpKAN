@@ -1,11 +1,10 @@
 import pytest
 from textual.widgets import Header, Footer
-from src.ui.tui.app import OpKANDashboard, MetricCard, StoryPanel
+from src.ui.tui.app import OpKANDashboard, MetricCard
 from textual_plotext import PlotextPlot
 
 def test_tui_component_instantiation():
     """Verify that all custom TUI components can be instantiated without error."""
-    story = StoryPanel()
     card = MetricCard(title="Test", unit="unit")
     app = OpKANDashboard()
     
