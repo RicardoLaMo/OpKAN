@@ -1,0 +1,16 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data
+data/*.csv
+data/*.jsonl
+backtest_results.png
+
+# Models
+models/*.pt
+models/liuclaw-lora-*
+
+# OS
+.DS_Store

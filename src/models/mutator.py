@@ -57,7 +57,8 @@ class TopologicalMutator:
     def mutate_edge(model: nn.Module, 
                     edge_id: str, 
                     action: str, 
-                    formula: str = None):
+                    formula: str = None,
+                    initial_params: dict = None):
         """
         Executes a mutation command on the KAN model.
         """
@@ -68,22 +69,28 @@ class TopologicalMutator:
             return f"Edge({edge_id}) kept as is."
 
         if action == "PRUNE":
-            # Replace with ZeroEdge or simply set weight to 0 and freeze
-            target_layer.swap_edge(in_idx, out_idx, nn.Identity()) # Placeholder for pruning
-            # In a real KAN, we might use a zero function
+            # Replace with a constant zero edge for pruning
+            target_layer.swap_edge(in_idx, out_idx, nn.Sequential()) # Sequential() acts as identity or we can use a custom Zero module
             return f"Edge({edge_id}) pruned."
 
         if action == "REPLACE":
             if not formula:
                 raise ValueError(f"Formula required for REPLACE action on {edge_id}")
             
-            # Verify C2 continuity
-            test_edge = C2SymbolicEdge(formula)
+            # 1. Create and initialize the symbolic edge
+            new_edge = C2SymbolicEdge(formula)
+            if initial_params:
+                with torch.no_grad():
+                    if 'scale' in initial_params: new_edge.scale.fill_(initial_params['scale'])
+                    if 'shift' in initial_params: new_edge.shift.fill_(initial_params['shift'])
+                    if 'coeff' in initial_params: new_edge.coeff.fill_(initial_params['coeff'])
+
+            # 2. Verify C2 continuity
             test_input = torch.linspace(-5, 5, 100).unsqueeze(-1)
-            test_edge.verify_second_order_gradients(test_input)
+            new_edge.verify_second_order_gradients(test_input)
             
-            # Perform swap
-            target_layer.swap_edge(in_idx, out_idx, test_edge)
+            # 3. Perform swap
+            target_layer.swap_edge(in_idx, out_idx, new_edge)
             return f"Edge({edge_id}) mutated to {formula}"
 
         return f"Unknown action {action} for {edge_id}"

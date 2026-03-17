@@ -68,7 +68,8 @@ class EngineCoordinator:
                         model, 
                         mutation.edge_id, 
                         mutation.action, 
-                        mutation.formula
+                        mutation.formula,
+                        mutation.initial_params
                     )
                     print(f"Mutation status: {status}")
                 

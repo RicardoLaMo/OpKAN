@@ -7,7 +7,8 @@ class EdgeMutation(BaseModel):
     """
     edge_id: str = Field(..., description="The exact ID of the B-spline edge, e.g., 'L0_N0_to_L1_N1'")
     action: Literal["PRUNE", "REPLACE", "KEEP"] = Field(..., description="The topological action to take on the edge.")
-    formula: Optional[str] = Field(None, description="If action is REPLACE, provide the strictly C^2 continuous PyTorch formula (e.g., 'torch.pow(x, 2)'). Otherwise null.")
+    formula: Optional[str] = Field(None, description="If action is REPLACE, provide the strictly C^2 continuous PyTorch formula (e.g., 'torch.pow(x, 2)').")
+    initial_params: Optional[dict] = Field(None, description="Optional initial values for symbolic parameters like scale, shift, or coefficients.")
     reasoning: str = Field(..., description="A rigorous quantitative justification for this action based on L1 norms and sampled points.")
 
 class RegimeThesis(BaseModel):

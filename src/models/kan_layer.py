@@ -44,5 +44,7 @@ class KANLayer(nn.Module):
         return output
 
     def swap_edge(self, in_idx: int, out_idx: int, new_module: nn.Module):
-        """Physically swap an edge module."""
-        self.edges[in_idx][out_idx] = new_module
+        """Physically swap an edge module and move to correct device."""
+        # Get current device from parameters
+        device = next(self.parameters()).device
+        self.edges[in_idx][out_idx] = new_module.to(device)
