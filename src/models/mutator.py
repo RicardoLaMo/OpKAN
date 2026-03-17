@@ -1,6 +1,49 @@
+import ast
 import torch
 import torch.nn as nn
 from typing import Any, Tuple
+
+_ALLOWED_TORCH_FUNCS = frozenset({
+    'sin', 'cos', 'tan', 'exp', 'log', 'log1p', 'sqrt', 'abs', 'pow',
+    'tanh', 'sigmoid', 'softplus', 'sign', 'clamp', 'relu',
+    'floor', 'ceil', 'round', 'reciprocal', 'neg',
+})
+
+_SAFE_AST_NODES = frozenset({
+    ast.Expression, ast.Call, ast.BinOp, ast.UnaryOp,
+    ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow, ast.FloorDiv, ast.Mod,
+    ast.USub, ast.UAdd, ast.Constant, ast.Load,
+})
+
+def _validate_symbolic_expression(expr: str) -> None:
+    """Validate that expr uses only torch.* functions and the variable x.
+    Raises ValueError if any disallowed AST node is found.
+    """
+    try:
+        tree = ast.parse(expr, mode='eval')
+    except SyntaxError as e:
+        raise ValueError(f"Syntax error in symbolic expression '{expr}': {e}")
+    for node in ast.walk(tree):
+        if type(node) in _SAFE_AST_NODES:
+            continue
+        if isinstance(node, ast.Name):
+            if node.id not in ('x', 'torch'):
+                raise ValueError(
+                    f"Disallowed name '{node.id}'. Only 'x' and 'torch.*' are permitted."
+                )
+        elif isinstance(node, ast.Attribute):
+            if not (isinstance(node.value, ast.Name) and node.value.id == 'torch'):
+                raise ValueError("Only 'torch.*' attributes are allowed.")
+            if node.attr not in _ALLOWED_TORCH_FUNCS:
+                raise ValueError(
+                    f"torch.{node.attr} is not in the allowlist. "
+                    f"Permitted functions: {sorted(_ALLOWED_TORCH_FUNCS)}"
+                )
+        else:
+            raise ValueError(
+                f"Disallowed expression node '{type(node).__name__}'. "
+                "Only arithmetic operators and torch.* functions are permitted."
+            )
 
 class C2SymbolicEdge(nn.Module):
     """
@@ -9,6 +52,7 @@ class C2SymbolicEdge(nn.Module):
     """
     def __init__(self, expression: str):
         super().__init__()
+        _validate_symbolic_expression(expression)
         self.expression_str = expression
         self.scale = nn.Parameter(torch.ones(1))
         self.shift = nn.Parameter(torch.zeros(1))
