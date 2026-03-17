@@ -9,8 +9,7 @@ from src.models.kan_layer import KANLayer
 from src.models.heston_pde import heston_pde_loss, heston_boundary_loss
 from src.engine.coordinator import EngineCoordinator
 from src.agent.core import LiuClawAgent
-from unittest.mock import MagicMock
-from src.agent.dsl import LiuClawDecision
+from src.agent.dsl import ReflexDecision, StrategicDecision, RegimeThesis
 from src.config import load_config, get_heston_params, get_collocation_params, get_training_params
 
 class PIKANModel(nn.Module):
@@ -53,11 +52,18 @@ def benchmark_h200(data_path: str, batch_size: int = None, epochs: int = None):
     model = PIKANModel().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=t['lr'])
     
-    # Mock Agent for math throughput testing
-    agent = MagicMock(spec=LiuClawAgent)
-    agent.decide_mutations.return_value = LiuClawDecision(reasoning="Mock", confidence=1.0)
+    # Mock Agent for math throughput testing (dual-process API)
+    agent = LiuClawAgent()
+    agent.think_fast = lambda step, edge_stats, loss_delta: ReflexDecision(
+        reasoning=f"Benchmark step {step}: no action.", prunes=[], lr_adjustment=1.0
+    )
+    agent.think_slow = lambda history, regime_data, model_state: StrategicDecision(
+        reasoning="Benchmark: topology stable.", mutations=[],
+        regime_analysis=RegimeThesis(hmm_transition_detected=False),
+        training_command="CONTINUE",
+    )
     coordinator = EngineCoordinator(agent)
-    coordinator.start_agent_thread()
+    coordinator.start_threads()
     
     # Heston Params (loaded from config)
     r, kappa, theta, sigma, rho = h['r'], h['kappa'], h['theta'], h['sigma'], h['rho']
@@ -92,11 +98,19 @@ def benchmark_h200(data_path: str, batch_size: int = None, epochs: int = None):
             optimizer.step()
             
             # Non-blocking mutation check
-            coordinator.apply_pending_mutations(model)
-            
-            # Occasional agent request
+            coordinator.apply_pending_mutations(model, optimizer)
+
+            # Occasional agent requests (dual-process)
+            if i % 10 == 0:
+                coordinator.request_reflex(
+                    step=i, edge_stats={}, loss_delta=total_loss.item()
+                )
             if i % 50 == 0:
-                coordinator.request_mutation({"step": i}, {"health": "benchmark"})
+                coordinator.request_strategic(
+                    history={"step": i, "loss": total_loss.item()},
+                    regime_data={"regime": 0},
+                    model_state={"layers": len(model.layers)},
+                )
                 
             running_loss += total_loss.item()
             
@@ -117,7 +131,7 @@ def benchmark_h200(data_path: str, batch_size: int = None, epochs: int = None):
     torch.save(model.state_dict(), model_path)
     print(f"Model saved to {model_path}")
     
-    coordinator.stop_agent_thread()
+    coordinator.stop_threads()
     return model_path
 
 if __name__ == "__main__":
