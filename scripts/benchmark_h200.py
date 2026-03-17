@@ -11,6 +11,7 @@ from src.engine.coordinator import EngineCoordinator
 from src.agent.core import LiuClawAgent
 from unittest.mock import MagicMock
 from src.agent.dsl import LiuClawDecision
+from src.config import load_config, get_heston_params, get_collocation_params, get_training_params
 
 class PIKANModel(nn.Module):
     """
@@ -28,7 +29,17 @@ class PIKANModel(nn.Module):
             x = layer(x)
         return x
 
-def benchmark_h200(data_path: str, batch_size: int = 1024, epochs: int = 10):
+def benchmark_h200(data_path: str, batch_size: int = None, epochs: int = None):
+    cfg = load_config()
+    h = get_heston_params(cfg)
+    c = get_collocation_params(cfg)
+    t = get_training_params(cfg)
+
+    if batch_size is None:
+        batch_size = t['batch_size']
+    if epochs is None:
+        epochs = t['epochs']
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"--- H200 Benchmarking --- Device: {device}")
     
@@ -40,7 +51,7 @@ def benchmark_h200(data_path: str, batch_size: int = 1024, epochs: int = 10):
     
     # 2. Setup Model and Agent
     model = PIKANModel().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=t['lr'])
     
     # Mock Agent for math throughput testing
     agent = MagicMock(spec=LiuClawAgent)
@@ -48,8 +59,9 @@ def benchmark_h200(data_path: str, batch_size: int = 1024, epochs: int = 10):
     coordinator = EngineCoordinator(agent)
     coordinator.start_agent_thread()
     
-    # Heston Params
-    r, kappa, theta, sigma, rho, K, T = 0.05, 2.0, 0.04, 0.3, -0.7, 100.0, 1.0
+    # Heston Params (loaded from config)
+    r, kappa, theta, sigma, rho = h['r'], h['kappa'], h['theta'], h['sigma'], h['rho']
+    K, T = c['K'], c['T']
     
     # 3. Training Benchmarking
     print(f"Starting Benchmark Training: {epochs} epochs, Batch Size: {batch_size}")

@@ -1,0 +1,32 @@
+# OpKAN Heston Model Configuration
+# All hyperparameters for training, data, and model architecture.
+
+heston:
+  r: 0.05       # risk-free rate
+  kappa: 2.0    # mean reversion speed
+  theta: 0.04   # long-term mean variance
+  sigma: 0.3    # vol of vol
+  rho: -0.7     # spot-vol correlation
+
+collocation:
+  S_max: 200.0  # max spot price in PDE domain
+  v_max: 0.5    # max variance in PDE domain
+  T: 1.0        # time horizon (years)
+  K: 100.0      # representative strike for boundary conditions
+
+training:
+  lr: 0.001
+  batch_size: 4096
+  epochs: 5
+  max_norm: 1.0   # gradient clipping norm
+  mutation_freq: 10   # request agent every N steps
+  strategic_freq: 50  # request strategic review every N steps
+
+model:
+  layer_dims: [3, 16, 1]
+
+agent:
+  base_url: "http://localhost:8000/v1"
+  model_name_fast: "Qwen/Qwen2.5-7B-Instruct"
+  model_name_slow: "Qwen/Qwen2.5-32B-Instruct"
+  temperature: 0.1

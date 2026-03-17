@@ -7,6 +7,7 @@ from src.data.parser import load_opra_data, clean_and_augment
 from src.data.dataset import get_dataloader
 from src.models.kan_layer import KANLayer
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from src.config import load_config, get_heston_params, get_collocation_params, get_training_params
 
 class PIKANModel(nn.Module):
     def __init__(self, layers_config=[3, 16, 1]):
@@ -74,14 +75,17 @@ def run_backtest(data_path: str, model_path: str = "models/pikan_heston.pt"):
 if __name__ == "__main__":
     import os
     from scripts.benchmark_h200 import benchmark_h200
-    
+
+    cfg = load_config()
+    t = get_training_params(cfg)
+
     data_path = "data/synthetic_opra.csv"
     model_path = "models/pikan_heston.pt"
-    
+
     # 1. Run a slightly longer training to get a decent model for backtesting
     # In a real environment, we'd use more epochs
     print("Pre-training PI-KAN for backtest...")
-    benchmark_h200(data_path, epochs=3, batch_size=1024)
-    
+    benchmark_h200(data_path, epochs=t['epochs'], batch_size=t['batch_size'])
+
     # 2. Run Backtest
     run_backtest(data_path, model_path)
