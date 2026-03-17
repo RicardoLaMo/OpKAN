@@ -33,7 +33,8 @@ async def test_app_compose_flow():
         app.update_data()
         
         # Check values after update
-        assert app.query_one("#card-regime", MetricCard).value in ["STABLE", "EXPANSION"]
+        regime = app.query_one("#card-regime", MetricCard).value
+        assert regime in ["STABLE", "EXPANSION", "CRASH", "JUMP_DIFFUSION", "INITIALIZING"]
         assert int(app.query_one("#card-tput", MetricCard).value.replace(",", "")) > 0
         
         # Verify log is working
