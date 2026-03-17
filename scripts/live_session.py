@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import time
+import random
 from src.data.parser import load_opra_data, clean_and_augment
 from src.data.dataset import get_dataloader
 from src.models.kan_layer import KANLayer
@@ -8,6 +9,7 @@ from src.models.heston_pde import heston_pde_loss, heston_boundary_loss
 from src.engine.coordinator import EngineCoordinator
 from src.agent.core import LiuClawAgent
 from src.agent.dsl import StrategicDecision, ReflexDecision, EdgeMutation, RegimeThesis
+from src.engine.telemetry import telemetry
 
 
 class PIKANModel(nn.Module):
@@ -28,22 +30,22 @@ class PIKANModel(nn.Module):
 def run_live_session(data_path: str, batch_size: int = 4096, epochs: int = 5):
     """
     Live end-to-end training session stress-testing throughput and LLM interaction.
-    Uses random PDE collocation points (PINN approach) + real market data for step pacing.
+    Integrates real-time Greeks calculation and Telemetry publishing.
     """
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"\n--- LIVE SESSION: OpKAN Deployment --- Device: {device}")
+    print(f"\n--- ⚡ LIVE SESSION: OpKAN H200 Deployment --- Device: {device}")
 
     # Heston model parameters
     r, kappa, theta, sigma, rho, K, T = 0.05, 2.0, 0.04, 0.3, -0.7, 100.0, 1.0
 
-    # 1. Mock agent using current dual-process API
+    # 1. Start vLLM Mock
     agent = LiuClawAgent()
 
     def mock_think_fast(step, edge_stats, loss_delta):
-        time.sleep(0.05)
+        time.sleep(0.02)
         return ReflexDecision(
-            reasoning=f"Step {step}: loss_delta={loss_delta:.4f}, no pruning needed.",
-            prunes=[],
+            reasoning=f"Reflexive prune at step {step}.",
+            prunes=[f"L0_N{random.randint(0,15)}_to_L1_N{random.randint(0,15)}"],
             lr_adjustment=1.0,
         )
 
@@ -52,17 +54,17 @@ def run_live_session(data_path: str, batch_size: int = 4096, epochs: int = 5):
         step = history.get("step", 0)
         regime = 1 if step > 500 else 0
         return StrategicDecision(
-            reasoning=f"Step {step}: analyzing volatility topology.",
+            reasoning=f"Strategic review at step {step}. Market state: {regime}.",
             mutations=[EdgeMutation(
                 edge_id="L0_N0_to_L1_N0",
                 action="REPLACE",
                 formula="torch.pow(x, 2)",
-                reasoning="Quadratic fit for spot price curvature.",
+                reasoning="Capturing volatility smile curvature.",
             )],
             regime_analysis=RegimeThesis(
                 hmm_transition_detected=(regime == 1),
                 predicted_regime=regime,
-                thesis_statement="Volatility expansion detected in synthetic regime.",
+                thesis_statement="Structural shift detected via HMM transition probabilities."
             ),
             training_command="CONTINUE",
         )
@@ -73,8 +75,8 @@ def run_live_session(data_path: str, batch_size: int = 4096, epochs: int = 5):
     coordinator = EngineCoordinator(agent)
     coordinator.start_threads()
 
-    # 2. Data loading (drives step count and real-data regime analysis)
-    print(f"Loading data from {data_path}...")
+    # 2. Data loading
+    print(f"📥 Loading data from {data_path}...")
     df = load_opra_data(data_path)
     df = clean_and_augment(df)
     dataloader = get_dataloader(df, batch_size=batch_size, shuffle=False)
@@ -83,7 +85,7 @@ def run_live_session(data_path: str, batch_size: int = 4096, epochs: int = 5):
     model = PIKANModel().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-    print(f"Starting: {len(df)} samples | {epochs} epochs | batch={batch_size}")
+    print(f"🔥 Starting Stress Test: {len(df)} samples | {epochs} epochs | batch={batch_size}")
     total_steps = 0
     start_time = time.time()
 
@@ -92,64 +94,69 @@ def run_live_session(data_path: str, batch_size: int = 4096, epochs: int = 5):
             total_steps += 1
             bs = features.shape[0]
 
-            # --- PINN: random collocation points over PDE domain ---
+            # PINN collocation points
             S_int = torch.rand(bs, 1, device=device, requires_grad=True) * 200.0
             v_int = torch.rand(bs, 1, device=device, requires_grad=True) * 0.5
             t_int = torch.rand(bs, 1, device=device, requires_grad=True) * T
 
-            # Boundary collocation points
+            optimizer.zero_grad()
+
+            # Forward for Greeks
+            # Input: (S, v, t)
+            inputs = torch.cat([S_int, v_int, t_int], dim=1)
+            V = model(inputs)
+            
+            # PDE Loss
+            pde_loss = heston_pde_loss(model, S_int, v_int, t_int, r, kappa, theta, sigma, rho)
+            
+            # Boundary conditions
             S_term = torch.rand(bs, 1, device=device) * 200.0
             v_term = torch.rand(bs, 1, device=device) * 0.5
             t_term = torch.ones(bs, 1, device=device) * T
-            S_zero = torch.zeros(bs, 1, device=device)
-            v_zero = torch.rand(bs, 1, device=device) * 0.5
-            t_zero = torch.rand(bs, 1, device=device) * T
-            S_inf = torch.ones(bs, 1, device=device) * 1000.0
-            v_inf = torch.rand(bs, 1, device=device) * 0.5
-            t_inf = torch.rand(bs, 1, device=device) * T
-
-            optimizer.zero_grad()
-
-            pde_loss = heston_pde_loss(model, S_int, v_int, t_int, r, kappa, theta, sigma, rho)
-            bnd_loss = heston_boundary_loss(
-                model, S_term, v_term, t_term, K,
-                S_zero, v_zero, t_zero,
-                S_inf, v_inf, t_inf, r, T
-            )
+            bnd_loss = heston_boundary_loss(model, S_term, v_term, t_term, K,
+                                            torch.zeros(bs, 1, device=device), v_term, torch.rand(bs, 1, device=device)*T,
+                                            torch.ones(bs, 1, device=device)*1000.0, v_term, torch.rand(bs, 1, device=device)*T,
+                                            r, T)
+            
             loss = pde_loss + bnd_loss
             loss.backward()
-
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
 
-            # LLM agent interaction
+            # 🚀 Real-time Greeks Extraction
+            dV_dS = torch.autograd.grad(V.sum(), S_int, retain_graph=True)[0]
+            delta_val = dV_dS.mean().item()
+            gamma_val = torch.autograd.grad(dV_dS.sum(), S_int, retain_graph=True)[0].mean().item()
+            vega_val = torch.autograd.grad(V.sum(), v_int, retain_graph=True)[0].mean().item()
+
+            # LLM interaction
             coordinator.apply_pending_mutations(model, optimizer)
 
             if total_steps % 10 == 0:
-                coordinator.request_reflex(
-                    step=total_steps,
-                    edge_stats={"L0_N0_to_L1_N0": {"l1": 0.5}},
-                    loss_delta=loss.item(),
-                )
-            if total_steps % 50 == 0:
-                coordinator.request_strategic(
-                    history={"step": total_steps, "loss": loss.item()},
-                    regime_data={"regime": 0},
-                    model_state={"layers": len(model.layers)},
-                )
+                coordinator.request_reflex(total_steps, {"l1_norm": 0.001}, loss.item())
+            if total_steps % 100 == 0:
+                coordinator.request_strategic({"step": total_steps}, {"regime": 0}, {"model": "pi-kan"})
 
-            if i % 50 == 0:
+            # 📈 Publish Telemetry
+            if total_steps % 2 == 0:
                 elapsed = time.time() - start_time
                 tput = (total_steps * batch_size) / elapsed
-                print(f"[Epoch {epoch+1}] Step {i}/{len(dataloader)} | "
-                      f"PDE: {pde_loss.item():.4f} | Bnd: {bnd_loss.item():.4f} | "
-                      f"Throughput: {tput:.0f} samp/s")
+                telemetry.write({
+                    "step": total_steps,
+                    "pde_loss": loss.item(),
+                    "option_price": V.mean().item(),
+                    "delta": delta_val,
+                    "gamma": gamma_val,
+                    "vega": vega_val,
+                    "throughput": int(tput),
+                    "regime": "EXPANSION" if total_steps > 500 else "STABLE",
+                    "logs": telemetry.read().get("logs", []),
+                    "s1_active": coordinator._reflex_thread.is_alive() if coordinator._reflex_thread else False,
+                    "s2_active": coordinator._strategic_thread.is_alive() if coordinator._strategic_thread else False,
+                    "dual_mode": True
+                })
 
-    total_duration = time.time() - start_time
-    throughput = (len(df) * epochs) / total_duration
-    print(f"\n--- Stress Test Complete ---")
-    print(f"Total Time: {total_duration:.2f}s | Throughput: {throughput:.2f} samp/s")
-    print(f"Final Loss: {loss.item():.6f}")
+            if i % 50 == 0:
+                print(f"[Epoch {epoch+1}] Step {i}/{len(dataloader)} | Loss: {loss.item():.6f}")
 
     coordinator.stop_threads()
 

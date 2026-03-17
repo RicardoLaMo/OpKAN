@@ -1,0 +1,143 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{black_scholes_1973}
+\citation{merton_1973}
+\citation{heston1993closed}
+\citation{hutchinson_lo_poggio_1994}
+\citation{raissi2019physics}
+\citation{liu_etal_2024_kan}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{4}{section.1}\protected@file@percent }
+\newlabel{sec:intro}{{1}{4}{Introduction}{section.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.1}Two Problems That Are Almost Always Treated as One}{4}{subsection.1.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.2}The OpKAN Approach}{4}{subsection.1.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.3}Contributions}{5}{subsection.1.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.4}Scope and Positioning}{5}{subsection.1.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {1.5}Paper Organization}{5}{subsection.1.5}\protected@file@percent }
+\citation{heston1993closed}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Problem Formulation}{6}{section.2}\protected@file@percent }
+\newlabel{sec:formulation}{{2}{6}{Problem Formulation}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}The Heston PDE and the $C^2$ Constraint}{6}{subsection.2.1}\protected@file@percent }
+\newlabel{eq:heston_pde}{{3}{6}{The Heston PDE and the $C^2$ Constraint}{equation.3}{}}
+\newlabel{eq:bc1}{{4}{6}{The Heston PDE and the $C^2$ Constraint}{equation.4}{}}
+\newlabel{eq:bc2}{{5}{6}{The Heston PDE and the $C^2$ Constraint}{equation.5}{}}
+\newlabel{eq:bc3}{{6}{6}{The Heston PDE and the $C^2$ Constraint}{equation.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}The Regime Problem: Why a Single Learned Model Is Insufficient}{6}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}The Narrative Problem: Why Structured Models Cannot Self-Update}{6}{subsection.2.3}\protected@file@percent }
+\citation{kolmogorov1957representation}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Architecture}{7}{section.3}\protected@file@percent }
+\newlabel{sec:arch}{{3}{7}{Architecture}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Design Philosophy: One Problem per Layer}{7}{subsection.3.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces OpKAN information flow. Layers are decoupled: the HMM does not know about the KAN, the topology agent does not know about the PDE, and the GPU training loop never waits on the LLM.}}{7}{figure.1}\protected@file@percent }
+\newlabel{fig:architecture}{{1}{7}{OpKAN information flow. Layers are decoupled: the HMM does not know about the KAN, the topology agent does not know about the PDE, and the GPU training loop never waits on the LLM}{figure.1}{}}
+\citation{liu_etal_2024_kan}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Layer 1: The Physics-Informed KAN}{8}{subsection.3.2}\protected@file@percent }
+\newlabel{sec:arch:pikan}{{3.2}{8}{Layer 1: The Physics-Informed KAN}{subsection.3.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.1}Why KAN Over MLP for Heston}{8}{subsubsection.3.2.1}\protected@file@percent }
+\newlabel{eq:ka}{{7}{8}{Why KAN Over MLP for Heston}{equation.7}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.2}B-Spline Edge Activations}{8}{subsubsection.3.2.2}\protected@file@percent }
+\newlabel{eq:cox_de_boor}{{9}{8}{B-Spline Edge Activations}{equation.9}{}}
+\newlabel{eq:bspline_edge}{{10}{8}{B-Spline Edge Activations}{equation.10}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.3}Model Architecture and Training Objective}{8}{subsubsection.3.2.3}\protected@file@percent }
+\newlabel{eq:kan_forward}{{11}{9}{Model Architecture and Training Objective}{equation.11}{}}
+\newlabel{eq:loss}{{12}{9}{Model Architecture and Training Objective}{equation.12}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Layer 2: Hidden Markov Regime Detector}{9}{subsection.3.3}\protected@file@percent }
+\newlabel{sec:arch:hmm}{{3.3}{9}{Layer 2: Hidden Markov Regime Detector}{subsection.3.3}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.1}Why a Separate Regime Layer}{9}{subsubsection.3.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.2}Features and Walk-Forward Inference}{9}{subsubsection.3.3.2}\protected@file@percent }
+\newlabel{eq:hmm_relabel}{{13}{9}{Features and Walk-Forward Inference}{equation.13}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Layer 3: The Topology Management Agent}{10}{subsection.3.4}\protected@file@percent }
+\newlabel{sec:arch:agent}{{3.4}{10}{Layer 3: The Topology Management Agent}{subsection.3.4}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.1}The Core Idea: LLM as Semantic Compiler}{10}{subsubsection.3.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.2}Two-Speed Architecture}{10}{subsubsection.3.4.2}\protected@file@percent }
+\citation{kahneman2011thinking}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.3}The Domain-Specific Language}{11}{subsubsection.3.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}End-to-End Coordination}{11}{subsection.3.5}\protected@file@percent }
+\newlabel{sec:arch:coord}{{3.5}{11}{End-to-End Coordination}{subsection.3.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Correctness and Security}{11}{section.4}\protected@file@percent }
+\newlabel{sec:security}{{4}{11}{Correctness and Security}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}The Code Injection Problem}{12}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}AST Allowlist Validation}{12}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Correct Pruning Semantics}{13}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Atomic Mutation Rollback}{13}{subsection.4.4}\protected@file@percent }
+\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces Atomic Mutation Application with Rollback}}{13}{algorithm.1}\protected@file@percent }
+\citation{raissi2019physics}
+\citation{horvath2021deep}
+\citation{wilmott1993option}
+\citation{liu_etal_2024_kan}
+\citation{kolmogorov1957representation}
+\citation{polo_molina_etal_2024_monokan}
+\citation{schick_etal_2023_toolformer}
+\citation{yao_etal_2023_react}
+\citation{hamilton1989new}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Related Work}{14}{section.5}\protected@file@percent }
+\newlabel{sec:related}{{5}{14}{Related Work}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Physics-Informed Learning for PDEs}{14}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Kolmogorov-Arnold Networks}{14}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}LLM Tool Use and Structured Output}{14}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Market Regime Detection}{14}{subsection.5.4}\protected@file@percent }
+\citation{kahneman2011thinking}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Dual-Process AI Architectures}{15}{subsection.5.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Experimental Investigation}{15}{section.6}\protected@file@percent }
+\newlabel{sec:experiments}{{6}{15}{Experimental Investigation}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Research Questions}{15}{subsection.6.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Experimental Setup}{15}{subsection.6.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Protocol Benchmark Tiers}{16}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Results and Findings}{16}{section.7}\protected@file@percent }
+\newlabel{sec:results}{{7}{16}{Results and Findings}{section.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}RQ1 -- Protocol Validity}{16}{subsection.7.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Protocol results by context tier (Tier 0A and 0B). Execute = fraction of prompts that produced valid, executable DSL. Intent = fraction where the executed DSL action matched the analyst's stated goal.}}{16}{table.1}\protected@file@percent }
+\newlabel{tab:protocol}{{1}{16}{Protocol results by context tier (Tier 0A and 0B). Execute = fraction of prompts that produced valid, executable DSL. Intent = fraction where the executed DSL action matched the analyst's stated goal}{table.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}RQ2 -- Paraphrase Stability}{17}{subsection.7.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Semantic stability benchmark (Tier 0C). ``Group'' metrics require all paraphrases within a group to produce the same DSL action and execution result.}}{17}{table.2}\protected@file@percent }
+\newlabel{tab:stability}{{2}{17}{Semantic stability benchmark (Tier 0C). ``Group'' metrics require all paraphrases within a group to produce the same DSL action and execution result}{table.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}RQ3 -- Normalization Gap}{17}{subsection.7.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Document-to-gold agreement (Tier 0E). ``Exact'' = normalized string equality with the human-authored gold DSL. ``Semantic'' = same DSL operation family and regime. ``Result'' = same executed numerical output.}}{18}{table.3}\protected@file@percent }
+\newlabel{tab:gold}{{3}{18}{Document-to-gold agreement (Tier 0E). ``Exact'' = normalized string equality with the human-authored gold DSL. ``Semantic'' = same DSL operation family and regime. ``Result'' = same executed numerical output}{table.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.4}RQ4 -- Regime Coherence}{18}{subsection.7.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Financial monotonicity checks under explicit DSL regime overrides (Tier 0D). ``Raw'' = KAN/Symbolic PI-KAN evaluated directly on empirical regime anchors. ``Semantic controller'' = explicit controller with monotone projection applied over raw outputs.}}{18}{table.4}\protected@file@percent }
+\newlabel{tab:coherence}{{4}{18}{Financial monotonicity checks under explicit DSL regime overrides (Tier 0D). ``Raw'' = KAN/Symbolic PI-KAN evaluated directly on empirical regime anchors. ``Semantic controller'' = explicit controller with monotone projection applied over raw outputs}{table.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.5}RQ5 -- Pricing Performance}{18}{subsection.7.5}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Replay price MAE by market regime for selected models. Lower is better. Values represent mean absolute error on the SLV option chain.}}{19}{table.5}\protected@file@percent }
+\newlabel{tab:replay}{{5}{19}{Replay price MAE by market regime for selected models. Lower is better. Values represent mean absolute error on the SLV option chain}{table.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Live term-surface results (one quote date, cross-sectional split). IV MAE tests the model's ability to reconstruct the observed implied volatility surface.}}{19}{table.6}\protected@file@percent }
+\newlabel{tab:live}{{6}{19}{Live term-surface results (one quote date, cross-sectional split). IV MAE tests the model's ability to reconstruct the observed implied volatility surface}{table.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Cross-asset pricing summary. The best model family and its price MAE vary substantially across assets, reflecting different regime signal relevance.}}{19}{table.7}\protected@file@percent }
+\newlabel{tab:cross_asset}{{7}{19}{Cross-asset pricing summary. The best model family and its price MAE vary substantially across assets, reflecting different regime signal relevance}{table.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.6}RQ6 -- Engineering Performance}{19}{subsection.7.6}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Engineering performance on NVIDIA H200, batch size 4,096.}}{20}{table.8}\protected@file@percent }
+\newlabel{tab:engineering}{{8}{20}{Engineering performance on NVIDIA H200, batch size 4,096}{table.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Discussion}{20}{section.8}\protected@file@percent }
+\newlabel{sec:discussion}{{8}{20}{Discussion}{section.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}What the Architecture Gets Right}{20}{subsection.8.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.2}The Monotonicity Gap: A Design Question, Not a Model Failure}{20}{subsection.8.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.3}The Normalization Gap: A Contract Problem}{21}{subsection.8.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.4}Cross-Asset Transfer: What Domain Specificity Means}{21}{subsection.8.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Limitations}{21}{section.9}\protected@file@percent }
+\newlabel{sec:limitations}{{9}{21}{Limitations}{section.9}{}}
+\citation{hu2021lora}
+\citation{polo_molina_etal_2024_monokan}
+\citation{hu2021lora}
+\@writefile{toc}{\contentsline {section}{\numberline {10}Future Directions}{22}{section.10}\protected@file@percent }
+\newlabel{sec:future}{{10}{22}{Future Directions}{section.10}{}}
+\bibstyle{plainnat}
+\bibdata{references}
+\bibcite{black_scholes_1973}{{1}{1973}{{Black and Scholes}}{{}}}
+\bibcite{hamilton1989new}{{2}{1989}{{Hamilton}}{{}}}
+\bibcite{heston1993closed}{{3}{1993}{{Heston}}{{}}}
+\bibcite{horvath2021deep}{{4}{2021}{{Horvath et~al.}}{{Horvath, Muguruza, and Tomas}}}
+\bibcite{hu2021lora}{{5}{2021}{{Hu et~al.}}{{Hu, Shen, Wallis, Allen-Zhu, Li, Wang, Wang, and Chen}}}
+\@writefile{toc}{\contentsline {section}{\numberline {11}Conclusion}{23}{section.11}\protected@file@percent }
+\newlabel{sec:conclusion}{{11}{23}{Conclusion}{section.11}{}}
+\bibcite{hutchinson_lo_poggio_1994}{{6}{1994}{{Hutchinson et~al.}}{{Hutchinson, Lo, and Poggio}}}
+\bibcite{kahneman2011thinking}{{7}{2011}{{Kahneman}}{{}}}
+\bibcite{kolmogorov1957representation}{{8}{1957}{{Kolmogorov}}{{}}}
+\bibcite{liu_etal_2024_kan}{{9}{2024}{{Liu et~al.}}{{Liu, Wang, Vaidya, Ruehle, Halverson, Solja{\v {c}}i{\'{c}}, Hou, and Tegmark}}}
+\bibcite{merton_1973}{{10}{1973}{{Merton}}{{}}}
+\bibcite{polo_molina_etal_2024_monokan}{{11}{2024}{{Polo-Molina et~al.}}{{Polo-Molina, Alfaya, and Portela}}}
+\bibcite{raissi2019physics}{{12}{2019}{{Raissi et~al.}}{{Raissi, Perdikaris, and Karniadakis}}}
+\bibcite{schick_etal_2023_toolformer}{{13}{2023}{{Schick et~al.}}{{Schick, Dwivedi-Yu, Dess{\`e}, Raileanu, Lomeli, Zettlemoyer, Cancedda, and Scialom}}}
+\bibcite{wilmott1993option}{{14}{1993}{{Wilmott et~al.}}{{Wilmott, Dewynne, and Howison}}}
+\bibcite{yao_etal_2023_react}{{15}{2023}{{Yao et~al.}}{{Yao, Zhao, Yu, Du, Shafran, Narasimhan, and Cao}}}
+\gdef \@abspage@last{24}

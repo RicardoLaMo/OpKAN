@@ -1,4 +1,4 @@
-\begin{thebibliography}{18}
+\begin{thebibliography}{15}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -14,11 +14,6 @@ Fischer Black and Myron Scholes.
 James~D Hamilton.
 \newblock A new approach to the economic analysis of nonstationary time series and the business cycle.
 \newblock \emph{Econometrica}, 57\penalty0 (2):\penalty0 357--384, 1989.
-
-\bibitem[Hernandez(2016)]{hernandez2016model}
-Anthony Hernandez.
-\newblock Model calibration with neural networks.
-\newblock \emph{Risk}, 2016.
 
 \bibitem[Heston(1993)]{heston1993closed}
 Steven~L Heston.
@@ -60,11 +55,6 @@ Robert~C Merton.
 \newblock Theory of rational option pricing.
 \newblock \emph{Bell Journal of Economics and Management Science}, 4\penalty0 (1):\penalty0 141--183, 1973.
 
-\bibitem[Nguyen et~al.(2023)Nguyen, Moreno, Le-Bel, Lucchi, and Rodriguez~Martinez]{nguyen_etal_2023_mononet}
-Anh-Phu Nguyen, David~L Moreno, Nicolas Le-Bel, Aurelien Lucchi, and Maria Rodriguez~Martinez.
-\newblock {MonoNet}: Enhancing interpretability in neural networks via monotonic features.
-\newblock \emph{Bioinformatics Advances}, 3\penalty0 (1):\penalty0 vbad016, 2023.
-
 \bibitem[Polo-Molina et~al.(2024)Polo-Molina, Alfaya, and Portela]{polo_molina_etal_2024_monokan}
 Alejandro Polo-Molina, David Alfaya, and Javier Portela.
 \newblock {MonoKAN}: Certified monotonic kolmogorov-arnold network.
@@ -89,10 +79,5 @@ Paul Wilmott, Jeff Dewynne, and Sam Howison.
 Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao.
 \newblock {ReAct}: Synergizing reasoning and acting in language models.
 \newblock In \emph{International Conference on Learning Representations}, 2023.
-
-\bibitem[You et~al.(2017)You, Ding, Canini, Pfeifer, and Gupta]{you_etal_2017_dln}
-Seungil You, David Ding, Kevin Canini, Jan Pfeifer, and Maya Gupta.
-\newblock Deep lattice networks and partial monotonic functions.
-\newblock In \emph{Advances in Neural Information Processing Systems}, 2017.
 
 \end{thebibliography}

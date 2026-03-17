@@ -1,0 +1,56 @@
+\contentsline {section}{\numberline {1}Introduction}{4}{section.1}%
+\contentsline {section}{\numberline {2}Related Work}{5}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Classical Option Pricing and Stochastic Volatility}{5}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Physics-Informed Neural Networks}{5}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Kolmogorov-Arnold Networks}{5}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Machine Learning for Options and Implied Volatility}{6}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}LLM Agents for Quantitative Finance}{6}{subsection.2.5}%
+\contentsline {subsection}{\numberline {2.6}Monotone and Interpretable Learned Models}{6}{subsection.2.6}%
+\contentsline {subsection}{\numberline {2.7}Dual-Process Cognition and AI}{6}{subsection.2.7}%
+\contentsline {subsection}{\numberline {2.8}Hidden Markov Models for Market Regimes}{6}{subsection.2.8}%
+\contentsline {section}{\numberline {3}Mathematical Foundations}{7}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Kolmogorov-Arnold Representation and B-Splines}{7}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}The Heston Stochastic Volatility Model}{7}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Boundary Conditions}{7}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}PI-KAN Loss Formulation}{8}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}HMM Regime Detection}{8}{subsection.3.5}%
+\contentsline {section}{\numberline {4}System Architecture}{8}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Overview}{8}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Data Pipeline and Feature Extraction}{8}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}PI-KAN Model}{9}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}LiuClaw: A Dual-Process Agent}{9}{subsection.4.4}%
+\contentsline {subsubsection}{\numberline {4.4.1}System 1 -- Fast Thinking}{9}{subsubsection.4.4.1}%
+\contentsline {subsubsection}{\numberline {4.4.2}System 2 -- Slow Thinking}{9}{subsubsection.4.4.2}%
+\contentsline {subsubsection}{\numberline {4.4.3}Domain-Specific Language}{10}{subsubsection.4.4.3}%
+\contentsline {subsection}{\numberline {4.5}Asynchronous Coordination}{10}{subsection.4.5}%
+\contentsline {section}{\numberline {5}Security and Correctness}{11}{section.5}%
+\contentsline {subsection}{\numberline {5.1}The eval() Injection Vulnerability}{11}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}AST Allowlist Validator}{11}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}ZeroEdge: Correct PRUNE Semantics}{12}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}Atomic Mutation Rollback}{12}{subsection.5.4}%
+\contentsline {subsection}{\numberline {5.5}HMM Label Stability}{12}{subsection.5.5}%
+\contentsline {section}{\numberline {6}Experimental Design}{13}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Research Questions}{13}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Protocol Benchmark Tiers}{13}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Pricing Benchmarks}{13}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}Model Families Compared}{14}{subsection.6.4}%
+\contentsline {subsection}{\numberline {6.5}Engineering Stress Test}{14}{subsection.6.5}%
+\contentsline {section}{\numberline {7}Results}{14}{section.7}%
+\contentsline {subsection}{\numberline {7.1}LLM$\to $DSL Protocol Results}{14}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Semantic Protocol Stability}{15}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Document-to-Gold Agreement}{15}{subsection.7.3}%
+\contentsline {subsection}{\numberline {7.4}Regime-Action Coherence}{15}{subsection.7.4}%
+\contentsline {subsection}{\numberline {7.5}Quantitative Pricing Results}{16}{subsection.7.5}%
+\contentsline {subsection}{\numberline {7.6}Cross-Asset Transfer}{16}{subsection.7.6}%
+\contentsline {subsection}{\numberline {7.7}Engineering Performance}{17}{subsection.7.7}%
+\contentsline {subsubsection}{\numberline {7.7.1}Benchmark: Baseline vs. Dual-Process}{17}{subsubsection.7.7.1}%
+\contentsline {section}{\numberline {8}Discussion}{17}{section.8}%
+\contentsline {subsection}{\numberline {8.1}What the Results Support}{17}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}What the Results Do Not Support}{18}{subsection.8.2}%
+\contentsline {subsection}{\numberline {8.3}The Right Comparison Class}{18}{subsection.8.3}%
+\contentsline {section}{\numberline {9}Limitations}{19}{section.9}%
+\contentsline {section}{\numberline {10}Future Work}{19}{section.10}%
+\contentsline {section}{\numberline {11}Visualization and Telemetry}{20}{section.11}%
+\contentsline {subsection}{\numberline {11.1}Terminal User Interface (TUI)}{20}{subsection.11.1}%
+\contentsline {subsection}{\numberline {11.2}Streamlit Dashboard}{20}{subsection.11.2}%
+\contentsline {section}{\numberline {12}Conclusion}{20}{section.12}%

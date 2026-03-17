@@ -5,6 +5,7 @@ import queue
 from typing import Dict, Any, Callable, Optional
 from src.agent.core import LiuClawAgent
 from src.models.mutator import TopologicalMutator
+from src.engine.telemetry import telemetry
 from src.engine.queues import (
     reflex_queue, strategic_queue, 
     reflex_decision_queue, strategic_decision_queue,
@@ -97,6 +98,11 @@ class EngineCoordinator:
         while self.running:
             try:
                 ctx = reflex_queue.get(timeout=0.1)
+                # Publish activity
+                tel_data = telemetry.read()
+                tel_data["s1_active"] = True
+                telemetry.write(tel_data)
+
                 decision = self.agent.think_fast(ctx['step'], ctx['edge_stats'], ctx['loss_delta'])
                 
                 try:
@@ -109,6 +115,8 @@ class EngineCoordinator:
                         pass
                     reflex_decision_queue.put_nowait(decision)
                 
+                tel_data["s1_active"] = False
+                telemetry.write(tel_data)
                 reflex_queue.task_done()
             except queue.Empty: continue
             except Exception as e: print(f"System 1 Error: {e}")
@@ -118,6 +126,11 @@ class EngineCoordinator:
         while self.running:
             try:
                 ctx = strategic_queue.get(timeout=0.1)
+                # Publish activity
+                tel_data = telemetry.read()
+                tel_data["s2_active"] = True
+                telemetry.write(tel_data)
+
                 decision = self.agent.think_slow(ctx['history'], ctx['regime_data'], ctx['model_state'])
                 
                 try:
@@ -130,6 +143,8 @@ class EngineCoordinator:
                         pass
                     strategic_decision_queue.put_nowait(decision)
                 
+                tel_data["s2_active"] = False
+                telemetry.write(tel_data)
                 strategic_queue.task_done()
             except queue.Empty: continue
             except Exception as e: print(f"System 2 Error: {e}")
@@ -159,7 +174,10 @@ class EngineCoordinator:
         while not reflex_decision_queue.empty():
             try:
                 decision = reflex_decision_queue.get_nowait()
-                print(f"⚡ Reflexive Action: {decision.reasoning}")
+                msg = f"⚡ Reflexive: {decision.reasoning}"
+                print(msg)
+                telemetry.log_event(msg)
+
                 for edge_id in (getattr(decision, "prunes", []) or []):
                     TopologicalMutator.mutate_edge(model, edge_id, "PRUNE")
                 if optimizer and getattr(decision, "lr_adjustment", 1.0) != 1.0:
@@ -172,7 +190,7 @@ class EngineCoordinator:
 
         # 2. Process Strategic (Slow) / Legacy Decisions
         # Helper to apply mutations with rollback
-        def _apply_mutations_safe(mutations):
+        def _apply_mutations_safe(mutations, reasoning):
             if not mutations: return
             edge_snapshots = {}
             for mut in mutations:
@@ -185,9 +203,13 @@ class EngineCoordinator:
             try:
                 for mut in mutations:
                     status = TopologicalMutator.mutate_edge(model, mut.edge_id, mut.action, mut.formula, mut.initial_params)
-                    print(f"Mutation status: {status}")
+                    msg = f"🧠 Strategic Mutation: {status}"
+                    print(msg)
+                    telemetry.log_event(msg)
             except Exception as e:
-                print(f"Mutation failed: {e}. Rolling back {len(edge_snapshots)} edge(s).")
+                msg = f"❌ Mutation failed: {e}. Rolling back."
+                print(msg)
+                telemetry.log_event(msg)
                 for (l_idx, i_idx, o_idx), saved in edge_snapshots.items():
                     model.layers[l_idx].edges[i_idx][o_idx] = saved
                 print("Rollback complete.")
@@ -197,13 +219,27 @@ class EngineCoordinator:
             try:
                 decision = strategic_decision_queue.get_nowait()
                 if getattr(decision, "training_command", "CONTINUE") == "HALT":
-                    print("🚨 Strategic HALT received!")
+                    msg = "🚨 Strategic HALT received!"
+                    print(msg)
+                    telemetry.log_event(msg)
                     return "HALT"
-                print(f"🧠 Strategic Review: {decision.reasoning}")
-                _apply_mutations_safe(getattr(decision, "mutations", []))
+                
+                msg = f"🧠 Strategic Review: {decision.reasoning}"
+                print(msg)
+                telemetry.log_event(msg)
+
+                _apply_mutations_safe(getattr(decision, "mutations", []), decision.reasoning)
                 regime = getattr(decision, "regime_analysis", None)
                 if regime and regime.hmm_transition_detected:
-                    print(f"🚨 Regime Shift: {regime.predicted_regime}")
+                    msg = f"🚨 Regime Shift Detected: {regime.predicted_regime}"
+                    print(msg)
+                    telemetry.log_event(msg)
+                    
+                    # Update telemetry regime
+                    tel_data = telemetry.read()
+                    tel_data["regime"] = str(regime.predicted_regime)
+                    telemetry.write(tel_data)
+
                 strategic_decision_queue.task_done()
             except queue.Empty: break
 
@@ -213,7 +249,7 @@ class EngineCoordinator:
                 decision = decision_queue.get_nowait()
                 if getattr(decision, "training_command", "CONTINUE") == "HALT": return "HALT"
                 print(f"Applying legacy mutations. Reasoning: {decision.reasoning}")
-                _apply_mutations_safe(getattr(decision, "mutations", []))
+                _apply_mutations_safe(getattr(decision, "mutations", []), decision.reasoning)
                 decision_queue.task_done()
             except queue.Empty: break
             

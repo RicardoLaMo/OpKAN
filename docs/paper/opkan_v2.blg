@@ -1,50 +1,50 @@
 This is BibTeX, Version 0.99d (TeX Live 2025)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
-The top-level auxiliary file: architectural_deep_dive.aux
+The top-level auxiliary file: opkan_v2.aux
 The style file: plainnat.bst
 Database file #1: references.bib
 Warning--empty booktitle in horvath2021deep
 Warning--can't use both volume and number fields in horvath2021deep
 Warning--empty publisher in kolmogorov1957representation
-You've used 18 entries,
+You've used 15 entries,
             2773 wiz_defined-function locations,
-            691 strings with 8264 characters,
-and the built_in function-call counts, 9003 in all, are:
-= -- 751
-> -- 618
-< -- 11
-+ -- 210
-- -- 192
-* -- 757
-:= -- 1406
-add.period$ -- 55
-call.type$ -- 18
-change.case$ -- 116
-chr.to.int$ -- 18
-cite$ -- 39
-duplicate$ -- 398
-empty$ -- 696
-format.name$ -- 212
-if$ -- 1854
+            677 strings with 7760 characters,
+and the built_in function-call counts, 7569 in all, are:
+= -- 637
+> -- 512
+< -- 10
++ -- 174
+- -- 159
+* -- 636
+:= -- 1178
+add.period$ -- 46
+call.type$ -- 15
+change.case$ -- 96
+chr.to.int$ -- 15
+cite$ -- 33
+duplicate$ -- 334
+empty$ -- 584
+format.name$ -- 176
+if$ -- 1560
 int.to.chr$ -- 1
 int.to.str$ -- 1
-missing$ -- 20
-newline$ -- 98
-num.names$ -- 72
-pop$ -- 251
+missing$ -- 17
+newline$ -- 83
+num.names$ -- 60
+pop$ -- 208
 preamble$ -- 1
-purify$ -- 100
+purify$ -- 83
 quote$ -- 0
-skip$ -- 304
+skip$ -- 257
 stack$ -- 0
-substring$ -- 263
-swap$ -- 40
+substring$ -- 236
+swap$ -- 36
 text.length$ -- 4
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 188
+type$ -- 155
 warning$ -- 3
-while$ -- 73
+while$ -- 63
 width$ -- 0
-write$ -- 233
+write$ -- 196
 (There were 3 warnings)

@@ -16,11 +16,16 @@
 \usepackage{array}
 \usepackage{enumitem}
 \usepackage{parskip}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric,arrows.meta,positioning,fit,backgrounds,calc}
 
 \geometry{margin=1in}
 
 \definecolor{codeblue}{RGB}{30,100,200}
-\definecolor{gray75}{gray}{0.35}
+\definecolor{layerA}{RGB}{210,230,255}  % data / regime
+\definecolor{layerB}{RGB}{210,255,220}  % PI-KAN
+\definecolor{layerC}{RGB}{245,220,255}  % agent
+\definecolor{layerD}{RGB}{255,235,210}  % security / output
 \lstset{
   basicstyle=\ttfamily\small,
   keywordstyle=\color{codeblue}\bfseries,
@@ -47,13 +52,37 @@ Physics, Regime Awareness, and Auditable Language Control}}
 
 % -----------------------------------------------------------------------
 \begin{abstract}
-Options pricing at a modern trading desk is simultaneously a quantitative problem — produce prices that satisfy no-arbitrage conditions and financial boundary structure — and an informational problem — incorporate unstructured qualitative signals (macro news, research narratives, policy commentary) into the pricing model rapidly and without manual re-calibration. Classical approaches address the first problem well but not the second. Machine learning approaches ingest structured data effectively but have no natural channel for unstructured information.
+Options pricing at a modern trading desk is simultaneously a \emph{quantitative} problem
+— produce prices that satisfy no-arbitrage conditions and financial boundary structure —
+and an \emph{informational} problem — incorporate unstructured qualitative signals (macro
+news, research narratives, policy commentary) into the pricing model rapidly and without
+manual re-calibration. Classical approaches address the first problem well but not the
+second; machine learning approaches ingest structured data effectively but have no natural
+channel for unstructured information.
 
-We present \textbf{OpKAN}, an architecture that addresses both problems through three complementary layers. A \emph{physics-informed Kolmogorov-Arnold network} (PI-KAN) solves the Heston stochastic volatility partial differential equation over randomly sampled collocation points, enforcing PDE-level financial constraints via the training objective rather than by architectural choice. A \emph{Hidden Markov regime detector} provides a temporally stable, look-ahead-bias-free market state signal that conditions how the pricing surface should be interpreted. A \emph{topology management agent} — a dual-process large language model (LLM) system we call the \emph{semantic compiler} — reads both the regime signal and the learned KAN topology, then issues typed, validated commands that modify the network's structure in real time.
+We present \textbf{OpKAN}, an architecture that addresses both problems through a strict
+separation of concerns across three layers. A \emph{physics-informed Kolmogorov-Arnold
+network} (PI-KAN) solves the Heston stochastic volatility PDE over randomly sampled
+collocation points, enforcing $C^2$ continuity via B-spline edge activations. A
+\emph{Hidden Markov regime detector} provides a temporally stable regime label. A
+\emph{dual-process topology management agent} — which we call the \emph{semantic
+compiler} — translates regime signals and market narratives into typed, Pydantic-validated
+mutation commands that modify the KAN's edge activations in real time.
 
-The central design insight is a strict division of labor: the LLM does not price options; it translates unstructured text into a finite, Pydantic-validated domain-specific language (DSL) that drives the quantitative backend. We evaluate this architecture on five protocol benchmark tiers, pricing accuracy benchmarks across three market regimes, and an engineering throughput test on NVIDIA H200 hardware. Our preliminary findings establish that the LLM can compile market-narrative inputs into valid, executable DSL with 1.00 execution and intent-match rates on curated prompts, declining to 0.75 semantic agreement on harder document-grounded benchmarks — a gap that illuminates a concrete normalization research problem. Quantitatively, a regime-conditioned IV-residual hybrid achieves the lowest overall replay price MAE (0.9317) with particular strength in transition and stress regimes, while all five financial monotonicity checks pass only when an explicit semantic controller is layered over the raw learned model. Engineering throughput reaches $\mathbf{26{,}300}$ samples/sec on H200 with zero GPU blocking from the asynchronous LLM decision cycle.
+Our preliminary evaluation addresses six research questions. The agent compiles
+market-narrative inputs into valid, executable DSL with 1.00 execution and intent-match
+rates on curated prompts, declining to 0.75 semantic agreement on harder
+document-grounded benchmarks — a gap that frames a concrete normalization research
+problem rather than a conclusion. A regime-conditioned IV-residual hybrid achieves overall
+replay price MAE of 0.9317, with particular strength in transition (1.46) and stress
+(0.42) regimes, while all five financial monotonicity checks pass \emph{only} when an
+explicit semantic controller is layered over the raw learned model — a key finding about
+training objective sufficiency. Sustained training throughput reaches $\mathbf{26{,}300}$
+samples/sec on NVIDIA H200 with zero GPU blocking from the asynchronous LLM decision
+cycle.
 
-These results are exploratory: they demonstrate architectural viability and raise specific, tractable open questions rather than establishing final solutions.
+These results are exploratory: they demonstrate architectural viability and raise
+specific, tractable open questions rather than establishing final solutions.
 \end{abstract}
 
 \tableofcontents
@@ -66,71 +95,208 @@ These results are exploratory: they demonstrate architectural viability and rais
 
 \subsection{Two Problems That Are Almost Always Treated as One}
 
-An options desk pricing a call on silver futures at 9:42 on a morning when the Federal Reserve has just announced a larger-than-expected rate hold faces two problems that are structurally different but temporally inseparable.
+An options desk pricing a call on silver futures at 9:42 on a morning when the Federal
+Reserve has just announced a larger-than-expected rate hold faces two problems that are
+structurally different but temporally inseparable.
 
-The \emph{quantitative problem}: given current spot price $S$, instantaneous variance $v$, and time-to-expiry $t$, what option price $V(S, v, t)$ is consistent with the no-arbitrage dynamics of the Heston model, the terminal payoff at expiry, and the boundary behavior as $S \to 0$ and $S \to \infty$?
+The \emph{quantitative problem}: given current spot price $S$, instantaneous variance
+$v$, and time-to-expiry $t$, what option price $V(S,v,t)$ is consistent with the
+no-arbitrage dynamics of the Heston model, the terminal payoff at expiry, and the
+boundary behavior as $S \to 0$ and $S \to \infty$?
 
-The \emph{informational problem}: the rate decision is not a number. It is a paragraph. The relevant implication — stress, transition, or diffusion regime? — is a semantic judgment that must be translated into a volatility surface adjustment within seconds, before any market participant who makes this translation more slowly has already traded.
+The \emph{informational problem}: the rate decision is not a number. It is a paragraph.
+The relevant implication — stress, transition, or diffusion regime? — is a semantic
+judgment that must be translated into a volatility surface adjustment within seconds,
+before any market participant who makes this translation more slowly has already traded.
 
-Classical quantitative finance solves the first problem with high fidelity. Black-Scholes \citep{black_scholes_1973}, Merton \citep{merton_1973}, and the Heston stochastic volatility model \citep{heston1993closed} each provide a mathematically principled PDE with consistent Greeks and well-defined boundary conditions. But these formulas adapt to new regime information only through manual parameter recalibration — a process that takes minutes and requires an analyst's judgment.
+Classical quantitative finance solves the first problem with high fidelity.
+Black-Scholes \citep{black_scholes_1973}, Merton \citep{merton_1973}, and the Heston
+stochastic volatility model \citep{heston1993closed} each provide a mathematically
+principled PDE with consistent Greeks and well-defined boundary conditions. But these
+formulas adapt to new regime information only through manual parameter recalibration —
+a process that takes minutes and requires an analyst's judgment.
 
-Machine learning addresses the second problem better. Neural surface models \citep{hutchinson_lo_poggio_1994} can embed unstructured features through learned representations. Physics-informed neural networks (PINNs) \citep{raissi2019physics} enforce the PDE as a soft constraint during training, combining data-driven flexibility with structural discipline. But existing PINN architectures typically use standard multi-layer perceptrons (MLPs), whose ReLU activations have \emph{zero second derivatives} — a critical deficiency for Heston's cross-derivative term $\partial^2 V / \partial S \partial v$, which requires $C^2$ continuous activations for stable evaluation.
-
-More fundamentally, no existing architecture provides a principled, auditable channel for converting unstructured narrative text into quantitative topology updates at latencies compatible with real-time trading.
+Machine learning addresses the second problem better. Neural surface models
+\citep{hutchinson_lo_poggio_1994} can embed unstructured features through learned
+representations. Physics-informed neural networks (PINNs) \citep{raissi2019physics}
+enforce the PDE as a soft constraint during training, combining data-driven flexibility
+with structural discipline. But existing PINN architectures typically use standard
+multi-layer perceptrons (MLPs), whose ReLU activations have \emph{zero second
+derivatives} — a critical deficiency for Heston's cross-derivative term
+$\partial^2V/\partial S\partial v$, which requires $C^2$ continuous activations for
+stable evaluation. More fundamentally, no existing architecture provides a principled,
+auditable channel for converting unstructured narrative text into quantitative topology
+updates at latencies compatible with real-time trading.
 
 \subsection{The OpKAN Approach}
 
-OpKAN proposes that the informational problem and the quantitative problem can be solved jointly through a strict \emph{separation of concerns} across three layers, each optimized for what it does well.
+OpKAN proposes that the informational problem and the quantitative problem can be solved
+jointly through a strict \emph{separation of concerns} across three layers, each
+optimized for what it does well:
 
-\textbf{Layer 1 — The Physics Layer.} A Kolmogorov-Arnold network \citep{liu_etal_2024_kan} trained with a Heston PDE residual loss replaces the MLP backbone of conventional PINNs. KAN edge activations are parameterized as cubic B-splines, which are genuinely $C^2$ continuous across knot boundaries and therefore stable under second-order autograd. The resulting model is called a \emph{PI-KAN} (Physics-Informed KAN).
+\textbf{Layer 1 — The Physics Layer.} A Kolmogorov-Arnold network
+\citep{liu_etal_2024_kan} trained with a Heston PDE residual loss replaces the MLP
+backbone of conventional PINNs. KAN edge activations are parameterized as cubic
+B-splines, which are genuinely $C^2$ continuous across knot boundaries. The resulting
+model is called a \emph{PI-KAN} (Physics-Informed KAN).
 
-\textbf{Layer 2 — The Regime Layer.} A Gaussian Hidden Markov model runs walk-forward inference over five market microstructure features and emits a temporally stable, permutation-normalized regime label (low-volatility, high-volatility, or stress). This label functions as a conditioning signal that tells downstream components which market environment the current pricing should reflect.
+\textbf{Layer 2 — The Regime Layer.} A Gaussian Hidden Markov model runs walk-forward
+inference over five market microstructure features and emits a temporally stable,
+permutation-normalized regime label (diffusion, vol-expansion, or stress).
 
-\textbf{Layer 3 — The Semantic Compiler Layer.} A two-speed LLM agent reads the regime signal and the learned KAN topology, then issues typed mutation commands that modify the network's edge activations in real time. Critically, the LLM's output is constrained to a finite, Pydantic-validated domain-specific language (DSL). The LLM never produces a price; it produces a structured command that a specialist quantitative backend executes. This design makes every agent action auditable, replayable, and revocable.
+\textbf{Layer 3 — The Semantic Compiler Layer.} A two-speed LLM agent reads the regime
+signal and the learned KAN topology, then issues typed mutation commands that modify the
+network's edge activations. The LLM never produces a price; it produces a structured
+command that a specialist quantitative backend executes. This design makes every agent
+action auditable, replayable, and revocable.
 
-Together, these three layers form OpKAN — a regime-aware, narrative-responsive option pricing system where quantitative discipline and linguistic flexibility are composable rather than opposed.
+Together, these three layers form OpKAN — a regime-aware, narrative-responsive option
+pricing system where quantitative discipline and linguistic flexibility are composable
+rather than opposed.
 
 \subsection{Contributions}
 
 This paper makes the following contributions:
 
 \begin{enumerate}
-  \item \textbf{PI-KAN for Heston pricing.} A complete PI-KAN implementation using genuine Cox--de Boor cubic B-splines, replacing placeholder activations in prior implementations, with $C^2$ continuity verified by second-order autograd on the Heston cross-derivative term.
+  \item \textbf{PI-KAN for Heston pricing.} A complete PI-KAN implementation using
+  genuine Cox--de Boor cubic B-splines, with $C^2$ continuity verified by second-order
+  autograd on the Heston cross-derivative term.
 
-  \item \textbf{The semantic compiler design pattern.} A formal specification of the LLM-as-compiler architecture: a Pydantic DSL that makes the LLM's output typed, validated, and finite in vocabulary, with provable code-injection protection via AST allowlist analysis.
+  \item \textbf{The semantic compiler design pattern.} A Pydantic DSL that makes the
+  LLM's output typed, validated, and finite in vocabulary, with code-injection
+  protection via static AST allowlist analysis.
 
-  \item \textbf{A two-speed topology management agent.} A dual-process agent architecture that separates high-frequency reflexive edge maintenance (pruning, learning-rate adjustment) from low-frequency strategic topology surgery (symbolic replacement, regime diagnosis), so that neither process blocks the other or the GPU training loop.
+  \item \textbf{A two-speed topology management agent.} A dual-process agent architecture
+  that separates high-frequency reflexive edge maintenance from low-frequency strategic
+  topology surgery, so that neither process blocks the GPU training loop.
 
-  \item \textbf{Atomic mutation rollback.} A snapshot-and-restore mechanism that prevents partially-mutated model state by treating each mutation batch as a transactional unit.
+  \item \textbf{Atomic mutation rollback.} A snapshot-and-restore mechanism that prevents
+  partially-mutated model state by treating each mutation batch as a transactional unit.
 
-  \item \textbf{A tiered evaluation framework.} Five protocol benchmark tiers and two pricing benchmark tiers that separately assess the LLM compilation layer, the regime control layer, and the quantitative pricing layer — exposing the specific boundaries of current competence.
+  \item \textbf{A tiered evaluation framework.} Five protocol benchmark tiers and two
+  pricing benchmark tiers that separately assess the LLM compilation layer, the regime
+  control layer, and the quantitative pricing layer.
 
-  \item \textbf{An honest gap analysis.} Explicit identification of what the current architecture does not solve: intrinsic monotonicity, adversarial document robustness, and full human-analyst normalization.
+  \item \textbf{An honest gap analysis.} Explicit identification of what the current
+  architecture does not solve: intrinsic monotonicity, adversarial document robustness,
+  and full human-analyst normalization.
 \end{enumerate}
 
 \subsection{Scope and Positioning}
 
-OpKAN is not a pricing formula and does not claim to outperform all existing pricing models in all conditions. Its specific claim is narrower: \emph{when regime interpretation from unstructured narrative is part of the pricing problem, an architecture that combines a physics-grounded learned model with an auditable language control layer is more effective than either component alone.} The cross-asset experiments in Section~\ref{sec:results} show precisely where this claim holds and where it does not.
+OpKAN is not a pricing formula and does not claim to outperform all existing pricing
+models in all conditions. Its specific claim is narrower: \emph{when regime
+interpretation from unstructured narrative is part of the pricing problem, an
+architecture that combines a physics-grounded learned model with an auditable language
+control layer is more effective than either component alone.} The cross-asset experiments
+in Section~\ref{sec:results} show precisely where this claim holds and where it does not.
 
 \subsection{Paper Organization}
 
-Section~\ref{sec:formulation} develops the problem formulation. Section~\ref{sec:arch} describes the architecture with explicit design rationale. Section~\ref{sec:security} addresses correctness and security. Section~\ref{sec:related} situates the work in the literature. Section~\ref{sec:experiments} presents the experimental design and research questions. Section~\ref{sec:results} reports findings. Section~\ref{sec:discussion} interprets them and raises open questions. Section~\ref{sec:limitations} states scope boundaries. Section~\ref{sec:future} outlines future directions. Section~\ref{sec:conclusion} concludes.
+Section~\ref{sec:related} situates the work in the literature.
+Section~\ref{sec:formulation} develops the problem formulation. Section~\ref{sec:arch}
+describes the architecture. Section~\ref{sec:security} addresses correctness and
+security. Section~\ref{sec:experiments} presents the experimental design.
+Section~\ref{sec:results} reports findings. Section~\ref{sec:discussion} interprets them.
+Section~\ref{sec:limfuture} states scope boundaries and outlines future directions.
+Section~\ref{sec:conclusion} concludes.
+
+% =====================================================================
+\section{Related Work}
+\label{sec:related}
+% =====================================================================
+
+OpKAN sits at the intersection of five research areas. We review each with emphasis on
+the specific gaps that motivated our design choices.
+
+\subsection{Physics-Informed Learning for Financial PDEs}
+
+PINNs \citep{raissi2019physics} convert a PDE boundary value problem into an
+unconstrained optimization by embedding the differential operator residual in the loss
+function. Applications to financial PDEs \citep{horvath2021deep} have generally used
+standard MLP backbones. The $C^2$ continuity requirement of the Heston cross-derivative
+term has received limited attention; in practice, many implementations approximate or
+omit the $\rho\sigma vS$ coefficient entirely. OpKAN's PI-KAN backbone addresses this
+gap by using activations whose continuity class is guaranteed by construction.
+
+Finite difference methods \citep{wilmott1993option} and Monte Carlo simulation remain
+standard Heston baselines. They are accurate but rigid: re-solving under shifted
+parameters requires re-running the full solver. Deep hedging \citep{buhler2019deep}
+extends the neural approach to replication and hedging under real-world dynamics;
+Neural SDEs \citep{kidger2021neural} provide continuous-time neural network models
+that are related architecturally to our PDE-constrained training but do not enforce
+specific boundary conditions in the Heston sense.
+
+\subsection{Kolmogorov-Arnold Networks}
+
+The KAN architecture \citep{liu_etal_2024_kan} places learnable activation functions on
+edges rather than nodes, enabling edge-level interpretability and surgical symbolic
+replacement. The theoretical foundation is Kolmogorov's superposition theorem
+\citep{kolmogorov1957representation}. The key practical advantage over MLPs is the
+combination of $C^2$ B-spline activations and the ability to replace individual edges
+with symbolic functions.
+
+MonoKAN \citep{polo_molina_etal_2024_monokan} extends KANs with certified monotonicity
+constraints — the direction OpKAN's architecture should evolve. The current system
+achieves regime-ordered pricing through an external semantic controller, not native
+architectural monotonicity; selective MonoKAN substitution is a stated future direction
+(Section~\ref{sec:limfuture}).
+
+\subsection{LLM Tool Use and Financial NLP}
+
+Toolformer \citep{schick_etal_2023_toolformer} and ReAct \citep{yao_etal_2023_react}
+establish that LLMs can learn to invoke external tools and APIs. Domain-specific
+financial LLMs such as FinBERT \citep{huang2023finbert} and BloombergGPT
+\citep{wu2023bloomberggpt} demonstrate that pre-training on financial text improves
+structured information extraction.
+
+OpKAN's topology management agent takes a different position from all of these: the LLM
+is a \emph{source of structured commands}, not a direct decision-maker or a
+named-entity extractor. Its output is a typed DSL object validated by a Pydantic schema
+before it is applied, and the validation failure itself is auditable. This distinction
+has operational consequences: a generic tool call can fail silently or produce
+financially inconsistent outputs; a DSL command cannot be applied if it fails schema
+validation.
+
+\subsection{Market Regime Detection}
+
+Gaussian HMMs for market regime detection follow Hamilton's foundational work
+\citep{hamilton1989new} on nonlinear regime-switching time series. The label stability
+problem under rolling re-estimation is well known but rarely addressed explicitly in
+applied work. Our realized-volatility sorting approach (Section~\ref{sec:arch:hmm}) is
+grounded in the empirical regularity that realized volatility is the most discriminative
+feature for separating market regimes in our feature set.
+
+\subsection{Dual-Process AI Architectures}
+
+Kahneman's dual-process framework \citep{kahneman2011thinking} has been applied to AI
+agent design in robotics and game-playing. The specific combination of an LLM fast path
+and an LLM slow path operating on the same bounded queues — with both paths producing
+typed, schema-validated outputs that feed the same mutation pipeline — is, to our
+knowledge, a novel application to neural network topology management.
 
 % =====================================================================
 \section{Problem Formulation}
 \label{sec:formulation}
 % =====================================================================
 
-Before describing the architecture, we formalize the constraints that any solution must satisfy. This section establishes three requirements that jointly motivate the design choices in Section~\ref{sec:arch}.
+Before describing the architecture, we formalize the constraints that any solution must
+satisfy. This section establishes three requirements that jointly motivate the design
+choices in Section~\ref{sec:arch}.
 
 \subsection{The Heston PDE and the $C^2$ Constraint}
 
-The Heston stochastic volatility model \citep{heston1993closed} describes risk-neutral asset dynamics as a joint process for spot price $S_t$ and instantaneous variance $v_t$:
+The Heston stochastic volatility model \citep{heston1993closed} describes risk-neutral
+asset dynamics as a joint process for spot price $S_t$ and instantaneous variance $v_t$:
 \begin{align}
 dS_t &= r S_t \, dt + \sqrt{v_t} S_t \, dW_t^S \\
 dv_t &= \kappa(\theta - v_t) \, dt + \sigma \sqrt{v_t} \, dW_t^v
 \end{align}
-where $\kappa$ is mean-reversion speed, $\theta$ is the long-run variance, $\sigma$ is volatility-of-volatility, and $\text{Corr}(dW^S, dW^v) = \rho \, dt$ captures the leverage effect. By It\^o's lemma, the fair value $V(S, v, t)$ of a European call satisfies the Heston PDE:
+where $\kappa$ is mean-reversion speed, $\theta$ is the long-run variance, $\sigma$ is
+volatility-of-volatility, and $\text{Corr}(dW^S, dW^v) = \rho \, dt$ captures the
+leverage effect. By It\^o's lemma, the fair value $V(S,v,t)$ of a European call
+satisfies the Heston PDE:
 \begin{equation}
 \frac{\partial V}{\partial t}
 + \frac{1}{2}vS^2\frac{\partial^2 V}{\partial S^2}
@@ -148,21 +314,40 @@ V(0, v, t) &= 0 \quad \text{(zero spot)} \label{eq:bc2} \\
 V(S, v, t) &\approx S - Ke^{-r(T-t)} \quad \text{as } S \to \infty \label{eq:bc3}
 \end{align}
 
-The cross-derivative term $\rho\sigma vS \,\partial^2 V / \partial S \partial v$ is the key constraint for architecture design. Evaluating this term via automatic differentiation requires the network activation functions to be \emph{at least $C^2$ continuous}: once-differentiable activations (such as ReLU or leaky ReLU) produce zero second derivatives and make this term numerically degenerate. This rules out standard MLP architectures for faithful Heston PINN training.
+The cross-derivative term $\rho\sigma vS \,\partial^2 V / \partial S \partial v$ is the
+key constraint for architecture design. Evaluating this term via automatic
+differentiation requires the network activation functions to be \emph{at least $C^2$
+continuous}: once-differentiable activations (ReLU, leaky ReLU) produce zero second
+derivatives and make this term numerically degenerate, ruling out standard MLP
+architectures for faithful Heston PINN training.
 
 \subsection{The Regime Problem: Why a Single Learned Model Is Insufficient}
 
-A single trained neural network, even a well-constrained PINN, learns a \emph{fixed} mapping from inputs $(S, v, t)$ to prices. Real options markets, however, do not operate at a fixed point in parameter space. The Heston parameters $(\kappa, \theta, \sigma, \rho)$ are not constants — they shift with market regime. In a low-volatility diffusion regime, the mean-reversion parameter $\kappa$ dominates; in a stress regime, the vol-of-vol $\sigma$ and the leverage correlation $\rho$ become the primary drivers of the surface shape.
-
-A single frozen model trained on historical data averaged across regimes will systematically underprice out-of-the-money options in stress conditions and overprice them in calm conditions. The regime problem, then, is not a problem with any particular architecture — it is a consequence of the non-stationarity of the underlying stochastic process.
+A single trained neural network, even a well-constrained PINN, learns a \emph{fixed}
+mapping from inputs $(S,v,t)$ to prices. The Heston parameters $(\kappa,\theta,\sigma,
+\rho)$ are not constants — they shift with market regime. A single frozen model trained
+on historical data averaged across regimes will systematically underprice
+out-of-the-money options in stress conditions and overprice them in calm conditions.
+The regime problem is a consequence of the non-stationarity of the underlying stochastic
+process, not a defect of any particular architecture.
 
 \subsection{The Narrative Problem: Why Structured Models Cannot Self-Update}
 
-Even with a regime-sensitive architecture, a purely quantitative system has no channel for the most time-sensitive market information: qualitative narrative. Central bank announcements, geopolitical developments, and supply-shock narratives arrive as natural language, not as volatility surfaces or feature vectors. Converting them to structured inputs requires either a human analyst (high latency, not scalable) or a system that can reliably translate unstructured text into structured quantitative commands.
+Even with a regime-sensitive architecture, a purely quantitative system has no channel
+for the most time-sensitive market information: qualitative narrative. Central bank
+announcements, geopolitical developments, and supply-shock narratives arrive as natural
+language. Converting them to structured inputs requires either a human analyst (high
+latency, not scalable) or a system that reliably translates unstructured text into
+structured quantitative commands.
 
-This is not primarily a machine learning problem — it is an interface design problem. The challenge is not to make the LLM ``understand'' options pricing; it is to define an interface that accepts free-form language as input and produces structured, validated quantitative commands as output, so that the downstream pricing model never receives unvalidated, potentially inconsistent inputs.
+This is not primarily a machine learning problem — it is an interface design problem.
+The challenge is to define an interface that accepts free-form language as input and
+produces structured, validated quantitative commands as output, so that the downstream
+pricing model never receives unvalidated, potentially inconsistent inputs.
 
-These three requirements — $C^2$ continuous activations, regime-adaptive topology, and a structured interface for narrative inputs — jointly motivate the architecture described in Section~\ref{sec:arch}.
+These three requirements — $C^2$ continuous activations, regime-adaptive topology, and a
+structured interface for narrative inputs — jointly motivate the architecture in
+Section~\ref{sec:arch}.
 
 % =====================================================================
 \section{Architecture}
@@ -171,134 +356,226 @@ These three requirements — $C^2$ continuous activations, regime-adaptive topol
 
 \subsection{Design Philosophy: One Problem per Layer}
 
-The OpKAN architecture is organized around a single principle: each layer should do exactly one thing well, and the boundaries between layers should be explicit, typed, and enforceable.
+The OpKAN architecture is organized around a single principle: each layer should do
+exactly one thing well, and the boundaries between layers should be explicit, typed, and
+enforceable.
 
-\begin{itemize}
-  \item \textbf{Layer 1 (PI-KAN):} Solve the Heston PDE. Know nothing about market regimes or LLM outputs.
-  \item \textbf{Layer 2 (HMM):} Produce a stable regime label from market microstructure features. Know nothing about network topology or language.
-  \item \textbf{Layer 3 (Topology Agent):} Translate regime signals and topology statistics into typed mutation commands. Know nothing about the PDE internals or the raw market data.
+\begin{itemize}[nosep]
+  \item \textbf{Layer 1 (PI-KAN):} Solve the Heston PDE. Know nothing about market
+  regimes or LLM outputs.
+  \item \textbf{Layer 2 (HMM):} Produce a stable regime label from market
+  microstructure features. Know nothing about network topology or language.
+  \item \textbf{Layer 3 (Topology Agent):} Translate regime signals and topology
+  statistics into typed mutation commands. Know nothing about the PDE internals or
+  the raw market data.
 \end{itemize}
 
-The result is shown in Figure~\ref{fig:architecture}. Data flows in one direction (market data $\to$ features $\to$ regime label $\to$ topology commands $\to$ updated network), with the agent operating asynchronously so it never blocks the GPU training loop.
+Figure~\ref{fig:architecture} shows the information flow. Data moves in one direction
+(market data $\to$ features $\to$ regime label $\to$ updated network), with the agent
+operating asynchronously so it never blocks the GPU training loop.
 
-\begin{figure}[h]
+% ------------------------------------------------------------------
+\begin{figure}[t]
 \centering
-\fbox{\parbox{0.93\textwidth}{\centering\vspace{4mm}
-\textbf{Market Data (OPRA format)}\\[2mm]
-$\downarrow$ \textit{parse, clean, compute features}\\[2mm]
-\textbf{Feature Vector} $\bm{f}_t = (\text{log-return},\ \hat{\sigma}_t,\ \sigma^{\text{IV}}_t,\ \Delta_t,\ \mu^{\text{IV}}_t)$\\[2mm]
-$\downarrow$ \textit{HMM walk-forward, permutation relabeling}\\[2mm]
-\textbf{Regime Label} $r_t \in \{0:\text{Diffusion},\ 1:\text{Vol-Expansion},\ 2:\text{Stress}\}$\\[3mm]
-$\downarrow$ \hfill $\updownarrow$ \textit{async queues (non-blocking)} \hfill $\downarrow$\\[2mm]
-\textbf{PI-KAN Training Loop} \hspace{6mm} $\longleftrightarrow$ \hspace{6mm}
-\textbf{Topology Management Agent}\\
-\small{(GPU: $\mathcal{L}_\text{PDE} + \lambda\mathcal{L}_\text{BC}$, 26,300 smp/sec)} \hspace{4mm}
-\small{Fast path: 7B model $<$50ms}\\
-\hspace{70mm} \small{Slow path: 32B model 200--500ms}\\[2mm]
-$\downarrow$ \textit{AST-validated, atomic rollback}\\[2mm]
-\textbf{Updated KAN Topology (B-spline or Symbolic edges)}
-\vspace{4mm}}}
-\caption{OpKAN information flow. Layers are decoupled: the HMM does not know about the KAN, the topology agent does not know about the PDE, and the GPU training loop never waits on the LLM.}
+\begin{tikzpicture}[
+  node distance=0.55cm and 2.2cm,
+  box/.style={rectangle, rounded corners=4pt, draw=black!50, minimum width=3.6cm,
+              minimum height=0.65cm, align=center, font=\small},
+  databox/.style={box, fill=layerA},
+  kannbox/.style={box, fill=layerB},
+  agentbox/.style={box, fill=layerC},
+  secbox/.style={box, fill=layerD},
+  arr/.style={-Stealth, thick},
+  dasharr/.style={-Stealth, dashed, thick, gray!70}
+]
+%% ---- Data column (left) ----
+\node[databox] (market)   {Market Data (OPRA)};
+\node[databox, below=of market]  (feat)    {Feature Vector $\bm{f}_t$};
+\node[databox, below=of feat]    (hmm)     {HMM Regime Detector\\$r_t \in \{0,1,2\}$};
+
+%% ---- PI-KAN (centre) ----
+\node[kannbox, below=1.1cm of hmm] (pikan)
+  {PI-KAN Training Loop\\(GPU: $\mathcal{L}_\text{PDE}+\lambda\mathcal{L}_\text{BC}$)};
+
+%% ---- Agent (right of PI-KAN) ----
+\node[agentbox, right=2.4cm of pikan, yshift= 0.75cm] (sys1)
+  {System~1: Qwen 2.5-7B\\Reflex $<$50\,ms};
+\node[agentbox, right=2.4cm of pikan, yshift=-0.75cm] (sys2)
+  {System~2: Qwen 2.5-32B\\Strategy 200--500\,ms};
+
+%% ---- Security + output ----
+\node[secbox,  below=1.1cm of pikan] (mutator)
+  {TopologicalMutator\\(AST-validated, atomic rollback)};
+\node[kannbox, below=of mutator] (topology)
+  {Updated KAN Topology\\(B-spline $\cup$ Symbolic edges)};
+
+%% ---- Arrows ----
+\draw[arr] (market)  -- (feat);
+\draw[arr] (feat)    -- (hmm);
+\draw[arr] (hmm)     -- (pikan);
+% async bidirectional queues
+\draw[dasharr] (pikan.east) to[bend left=12]
+  node[above, font=\footnotesize, pos=0.45]{async queue} (sys1.west);
+\draw[dasharr] (pikan.east) to[bend right=12] (sys2.west);
+\draw[dasharr] (sys1.west) to[bend left=12] (pikan.east);
+\draw[dasharr] (sys2.west) to[bend right=12] (pikan.east);
+% downward flow
+\draw[arr] (pikan)   -- (mutator);
+\draw[arr] (mutator) -- (topology);
+\end{tikzpicture}
+\caption{OpKAN information flow across three decoupled layers. The HMM does not know
+about the KAN; the topology agent does not know about the PDE; the GPU training loop
+never waits on the LLM. Dashed arrows are asynchronous (bounded queues; maxsize=1 for
+inputs, maxsize=32 for outputs). The full training throughput of 26,300\,smp/sec is
+measured during sustained 5-epoch training; the standalone E2E validation suite reports
+6,506\,smp/sec under a 50-step cold-start microbenchmark (see Section~\ref{sec:rq6}).}
 \label{fig:architecture}
 \end{figure}
+% ------------------------------------------------------------------
 
 \subsection{Layer 1: The Physics-Informed KAN}
 \label{sec:arch:pikan}
 
 \subsubsection{Why KAN Over MLP for Heston}
 
-The Kolmogorov-Arnold representation theorem \citep{kolmogorov1957representation} guarantees that any continuous multivariate function can be expressed as a composition of univariate continuous functions:
+The Kolmogorov-Arnold representation theorem \citep{kolmogorov1957representation}
+guarantees that any continuous function $f:[0,1]^n\to\mathbb{R}$ can be expressed as a
+composition of univariate continuous functions:
 \begin{equation}
 f(x_1, \ldots, x_n) = \sum_{q=0}^{2n} \Phi_q\!\left(\sum_{p=1}^{n} \phi_{q,p}(x_p)\right)
 \label{eq:ka}
 \end{equation}
-The KAN architecture \citep{liu_etal_2024_kan} operationalizes this by placing learnable activation functions on \emph{edges} (connections between nodes) rather than on nodes themselves. This has two concrete consequences for our problem:
+The domain in Eq.~\eqref{eq:ka} is the unit hypercube $[0,1]^n$; in practice the
+training domain $(S,v,t)\in[0,200]\times[0,0.5]\times[0,1]$ is bounded and the
+collocation grid is normalized accordingly. The KAN architecture \citep{liu_etal_2024_kan}
+operationalizes this by placing learnable activation functions on \emph{edges} rather
+than nodes. This has two concrete consequences for our problem.
 
-First, edge activations can be parameterized as B-splines, which are \emph{genuinely $C^2$ continuous}. This satisfies the Heston cross-derivative requirement (Section~\ref{sec:formulation}) that standard MLPs cannot meet.
+First, edge activations can be parameterized as B-splines, which are \emph{genuinely
+$C^2$ continuous}, satisfying the Heston cross-derivative requirement that standard MLPs
+cannot meet.
 
-Second, individual edges can be replaced with closed-form symbolic expressions without modifying the rest of the network. This is the topological handle the agent uses to inject domain knowledge — it replaces a B-spline edge with a formula like \texttt{torch.exp(-x)} when the edge's activation profile matches that function's shape, potentially improving both interpretability and generalization.
+Second, individual edges can be replaced with closed-form symbolic expressions without
+modifying the rest of the network — the topological handle the agent uses to inject
+domain knowledge. The resulting network, where some edges are B-splines and some are
+closed-form functions, is referred to as a \textbf{Symbolic PI-KAN}.
 
 \subsubsection{B-Spline Edge Activations}
 
-Each edge in the PI-KAN is implemented as a \texttt{BSplineEdge} module. The basis functions are defined by the Cox--de Boor recursion over a knot sequence $\mathbf{t}$:
+Each edge is implemented as a \texttt{BSplineEdge} module. The basis functions are
+defined by the Cox--de Boor recursion over a knot sequence $\mathbf{t}$:
 \begin{align}
 B_{i,0}(x) &= \mathbf{1}[t_i \leq x < t_{i+1}] \\
-B_{i,k}(x) &= \frac{x - t_i}{t_{i+k} - t_i} B_{i,k-1}(x) + \frac{t_{i+k+1} - x}{t_{i+k+1} - t_{i+1}} B_{i+1,k-1}(x)
+B_{i,k}(x) &= \frac{x - t_i}{t_{i+k} - t_i} B_{i,k-1}(x)
+             + \frac{t_{i+k+1} - x}{t_{i+k+1} - t_{i+1}} B_{i+1,k-1}(x)
 \label{eq:cox_de_boor}
 \end{align}
-
-OpKAN uses $G=5$ interior intervals and spline order $k=3$ (cubic), giving $G+k=8$ basis functions per edge and $G+2k+1=12$ knot points. The edge activation combines a SiLU base (for stable gradient flow at initialization) with a trained spline correction:
+OpKAN uses $G=5$ interior intervals and spline order $k=3$ (cubic), giving $G+k=8$
+basis functions per edge. The edge activation combines a SiLU base with a trained
+spline correction:
 \begin{equation}
-\phi(x) = w_\text{base} \cdot \text{SiLU}(x) + w_\text{spline} \cdot \sum_{i=1}^{8} c_i B_{i,3}(x)
+\phi(x) = w_\text{base} \cdot \text{SiLU}(x)
+         + w_\text{spline} \cdot \sum_{i=1}^{8} c_i B_{i,3}(x)
 \label{eq:bspline_edge}
 \end{equation}
-where $w_\text{base}, w_\text{spline} \in \mathbb{R}$ and $\{c_i\}_{i=1}^8$ are all trainable parameters. Because each $B_{i,3}$ is $C^2$ by construction, Eq.~\eqref{eq:bspline_edge} is $C^2$ for any choice of coefficients.
+where $w_\text{base}, w_\text{spline} \in \mathbb{R}$ and $\{c_i\}_{i=1}^8$ are
+trainable. Because each $B_{i,3}$ is $C^2$ by construction, Eq.~\eqref{eq:bspline_edge}
+is $C^2$ for any choice of coefficients.
 
-An edge whose spline coefficients have all been learned to near-zero can be \emph{pruned} — replaced by a \texttt{ZeroEdge} module that returns \texttt{torch.zeros\_like(x)}, permanently removing its contribution from the forward pass. An edge whose activation profile approximates a known smooth function can be \emph{replaced} — substituted by a \texttt{C2SymbolicEdge} that evaluates a formula string from the allowlisted vocabulary. The resulting network, where some edges are B-splines and some are symbolic functions, is referred to as a \textbf{Symbolic PI-KAN}, as it contains a mix of learned and explicit activations.
+An edge with near-zero spline coefficients can be \emph{pruned} (replaced by a
+\texttt{ZeroEdge} that returns \texttt{torch.zeros\_like(x)}); an edge whose activation
+profile approximates a smooth function can be \emph{replaced} by a
+\texttt{C2SymbolicEdge}.
 
 \subsubsection{Model Architecture and Training Objective}
 
-The PI-KAN takes the triple $(S, v, t)$ as input and outputs a scalar option price $V$. We use a $[3, 16, 1]$ layer configuration: three inputs, a hidden layer of 16 nodes, and one output. The forward pass aggregates edge outputs by summation:
+The PI-KAN uses a $[3, 16, 1]$ configuration (three inputs $(S,v,t)$, 16-node hidden
+layer, scalar output $V$). The forward pass aggregates edge outputs by summation:
 \begin{equation}
 h_j^{(\ell)} = \sum_{i=1}^{n_\text{in}^{(\ell)}} \phi_{ij}^{(\ell)}\!\left(h_i^{(\ell-1)}\right)
 \label{eq:kan_forward}
 \end{equation}
 
-Training minimizes a composite physics-informed loss over randomly sampled collocation points:
+Training minimizes a composite physics-informed loss over randomly sampled collocation
+points:
 \begin{equation}
 \mathcal{L} = \underbrace{\mathbb{E}_{\bm{x} \sim \Omega}\!\left[\left|\mathcal{N}[V](\bm{x})\right|^2\right]}_{\mathcal{L}_\text{PDE}}
 + \lambda_\text{BC}\underbrace{\mathbb{E}_{\bm{x} \sim \partial\Omega}\!\left[\left|V(\bm{x}) - V_\text{target}(\bm{x})\right|^2\right]}_{\mathcal{L}_\text{BC}}
 \label{eq:loss}
 \end{equation}
-where $\mathcal{N}[V]$ denotes the Heston differential operator evaluated term-by-term via \texttt{torch.autograd} with \texttt{create\_graph=True} for second-order gradient computation. Interior collocation points $\bm{x} = (S, v, t)$ are drawn uniformly from $[0,200] \times [0, 0.5] \times [0, 1]$ each batch.
-
-A critical implementation note: the interior collocation points are sampled randomly, not taken from market data. Using market-observed $(S, v, t)$ triples as collocation points would concentrate the PDE residual in historically observed regions and bias the model away from the full domain required by the boundary value problem. This is a subtle form of look-ahead bias that prior implementations of this system contained; it is corrected here.
+where $\mathcal{N}[V]$ is the Heston differential operator evaluated via
+\texttt{torch.autograd} with \texttt{create\_graph=True} for second-order computation.
+Interior collocation points $\bm{x} = (S,v,t)$ are drawn uniformly from
+$[0,200]\times[0,0.5]\times[0,1]$ each batch. A critical implementation note: these
+points are sampled randomly and \emph{independently of observed market data}. Using
+market-observed $(S,v,t)$ triples as collocation points would concentrate the PDE
+residual in historically observed regions, biasing the model away from the full domain.
+This look-ahead bias was present in earlier versions of this codebase and is corrected
+here; a quantitative before/after ablation is deferred to future work.
 
 \subsection{Layer 2: Hidden Markov Regime Detector}
 \label{sec:arch:hmm}
 
 \subsubsection{Why a Separate Regime Layer}
 
-One might ask: why not let the PI-KAN learn regime-sensitivity directly from data? The answer is a question of inductive bias. The Heston PDE does not change with regime — the PDE is a structural prior on the \emph{shape} of the pricing function. What changes with regime is the \emph{parameters} of the underlying dynamics: $\kappa$, $\sigma$, $\rho$. Conflating these two levels of adaptation would force the PI-KAN to simultaneously learn a PDE solution and a parameter estimation procedure, undermining the physics prior.
-
-A separate regime detector provides a clean conditioning signal that can be used by the topology agent without polluting the physics training objective.
+Why not let the PI-KAN learn regime-sensitivity directly from data? The Heston PDE does
+not change with regime — it is a structural prior on the \emph{shape} of the pricing
+function. What changes with regime is the \emph{parameters} $\kappa$, $\sigma$, $\rho$.
+Conflating these two levels of adaptation would force the PI-KAN to simultaneously
+learn a PDE solution and a parameter estimation procedure, undermining the physics prior.
+A separate regime detector provides a clean conditioning signal.
 
 \subsubsection{Features and Walk-Forward Inference}
 
-The regime detector fits a Gaussian HMM with diagonal covariance to five time-series features computed from spot prices and the options chain:
+The regime detector fits a Gaussian HMM with diagonal covariance to five time-series
+features:
 \begin{itemize}[nosep]
   \item $\ell_t = \log(S_t / S_{t-1})$ (log-return)
-  \item $\hat{\sigma}_t = \text{std}(\ell_{t-W:t}) \cdot \sqrt{252 \times 6.5 \times 60}$ (annualized realized volatility, $W=20$)
+  \item $\hat{\sigma}_t = \text{std}(\ell_{t-W:t}) \cdot \sqrt{252 \times 6.5 \times 60}$ (realized vol, $W=20$)
   \item $\sigma^\text{IV}_t$ (implied volatility from the options chain)
-  \item $\Delta_t = \sigma^\text{IV}_t - \hat{\sigma}_t$ (IV--RV spread, a risk-premium proxy)
+  \item $\Delta_t = \sigma^\text{IV}_t - \hat{\sigma}_t$ (IV--RV spread)
   \item $\mu^\text{IV}_t = \sigma^\text{IV}_t - \sigma^\text{IV}_{t-1}$ (IV momentum)
 \end{itemize}
 
-A persistent problem with rolling HMM inference is state label instability: because HMM states are only identified up to a permutation of their labels, ``state 0'' in window $t$ may map to ``state 1'' in window $t+1$ after a refit. We fix this with a realized-volatility sorting pass applied after every window fit:
+A persistent problem with rolling HMM inference is state label instability: ``state 0''
+in window $t$ may map to ``state 1'' in window $t+1$ after a refit. We fix this with a
+realized-volatility sorting pass:
 \begin{equation}
 \pi = \text{argsort}(\bm{\mu}_{:,1}), \quad \text{remap}[s] = \pi^{-1}[s]
 \label{eq:hmm_relabel}
 \end{equation}
-where $\bm{\mu}_{:,1}$ is the vector of per-state mean realized volatilities. This ensures that label 0 always maps to the lowest-realized-volatility regime across all rolling windows, producing a temporally coherent signal without look-ahead bias.
+where $\bm{\mu}_{:,1}$ is the vector of per-state mean realized volatilities, ensuring
+that label 0 always maps to the lowest-volatility regime across all rolling windows.
 
 \subsection{Layer 3: The Topology Management Agent}
 \label{sec:arch:agent}
 
 \subsubsection{The Core Idea: LLM as Semantic Compiler}
 
-The topology management agent, implemented as the \emph{LiuClaw} agent component, addresses a fundamental interface problem. On one side of the interface is unstructured text: research reports, news headlines, analyst commentary describing market conditions in natural language. On the other side is a precise quantitative backend that can only accept inputs in the form of typed mutation commands: prune this edge, replace that edge's activation with this formula.
+The topology management agent, internally named the \emph{LiuClaw} agent, addresses a
+fundamental interface problem. On one side is unstructured text; on the other is a
+quantitative backend that accepts only typed mutation commands (prune this edge, replace
+that activation with this formula). The agent's job is to translate one representation
+into the other — making it, in the precise sense of the term, a \emph{semantic
+compiler}.
 
-A general-purpose LLM can process the natural language side. The topology agent's job is to translate that processing into commands the quantitative backend can accept. It is, in this precise sense, a \emph{semantic compiler}: its input is natural language (or, more typically, structured statistics derived from the KAN's current state plus the regime signal), and its output is a program in a restricted DSL.
-
-The crucial design constraint is that the LLM's output must be \emph{type-safe at parse time}. We achieve this through a Pydantic schema: the LLM is instructed to generate JSON conforming to the \texttt{StrategicDecision} or \texttt{ReflexDecision} schema (described below), and the schema validates the output before it enters the mutation pipeline. A malformed LLM response triggers an error-correction retry rather than a downstream failure.
+The crucial design constraint is type-safety at parse time. The LLM is instructed to
+generate JSON conforming to the \texttt{StrategicDecision} or \texttt{ReflexDecision}
+Pydantic schema; the schema validates the output before it enters the mutation pipeline.
+A malformed response triggers an error-correction retry rather than a downstream
+failure.
 
 \subsubsection{Two-Speed Architecture}
 
-The agent operates on two timescales, motivated by the qualitatively different tasks each timescale handles.
+The agent operates on two timescales, motivated by the qualitatively different tasks
+each handles.
 
 \medskip
 \noindent\textbf{Fast path (System~1 — Reflexive Maintenance).}
-Every 10 training steps, the training loop places the current step index, per-edge L1 activation norms, and the recent loss delta into a bounded queue. A background thread dequeues this context, passes it to a 7B-parameter LLM (Qwen 2.5-7B), and writes back a \texttt{ReflexDecision}:
+Every 10 training steps, the training loop places the step index, per-edge L1 activation
+norms, and the recent loss delta into a bounded queue. A background thread dequeues
+this, passes it to a 7B-parameter model (Qwen 2.5-7B), and writes back a
+\texttt{ReflexDecision}:
 
 \begin{lstlisting}[language=Python]
 class ReflexDecision(BaseModel):
@@ -307,11 +584,15 @@ class ReflexDecision(BaseModel):
     lr_adjustment: float  # learning-rate multiplier in [0.5, 2.0]
 \end{lstlisting}
 
-This path handles two high-frequency tasks: pruning edges whose activation norms fall below a threshold (reducing computational graph complexity), and adjusting the learning rate when the loss trajectory suggests divergence. Latency must stay below 50ms to avoid any perceptible impact on the training loop, which is why the smallest available model is used here.
+This path prunes low-norm edges and adjusts the learning rate. Latency must stay below
+50\,ms, which is why the smallest available model is used.
 
 \medskip
 \noindent\textbf{Slow path (System~2 — Strategic Surgery).}
-Every 100 training steps, the training loop places a longer-horizon context — loss trajectory, HMM transition probabilities, full KAN state including current symbolic expressions — into a separate bounded queue. A second background thread dequeues this context, passes it to a 32B-parameter LLM (Qwen 2.5-32B), and writes back a \texttt{StrategicDecision}:
+Every 100 training steps, a longer-horizon context — loss trajectory, HMM transition
+probabilities, full KAN state — is placed in a separate bounded queue. A second
+background thread passes it to a 32B-parameter model (Qwen 2.5-32B) and writes back a
+\texttt{StrategicDecision}:
 
 \begin{lstlisting}[language=Python]
 class StrategicDecision(BaseModel):
@@ -321,56 +602,91 @@ class StrategicDecision(BaseModel):
     training_command: Literal["CONTINUE", "HALT"]
 \end{lstlisting}
 
-The strategic path handles topological surgery: replacing B-spline edges with symbolic functions discovered through the agent's reasoning about which mathematical forms are consistent with the Heston PDE's structure and the current regime. The 32B model is used here because edge replacement decisions require coherent mathematical reasoning across multiple PDE constraints simultaneously.
+This path replaces B-spline edges with symbolic functions that the agent reasons are
+consistent with the Heston PDE geometry. The 32B model is used because edge
+replacement requires coherent mathematical reasoning across multiple PDE constraints.
 
-This bifurcation is motivated by Kahneman's dual-process cognitive model \citep{kahneman2011thinking}. The analogy is precise: System~1 (fast, automatic, cheap) handles routine maintenance that requires pattern recognition; System~2 (slow, deliberate, expensive) handles strategic decisions that require multi-step reasoning. Decoupling them ensures that a slow System~2 decision never blocks a time-critical System~1 action.
+This bifurcation implements Kahneman's dual-process model \citep{kahneman2011thinking}:
+System~1 (fast, cheap, pattern recognition) never blocks System~2 (slow, deliberate,
+multi-step reasoning).
 
 \subsubsection{The Domain-Specific Language}
 
-Every agent output is a JSON object conforming to a Pydantic schema. The atomic unit of the DSL is the \texttt{EdgeMutation}:
+Every agent output is a JSON object conforming to a Pydantic schema. The atomic unit
+is the \texttt{EdgeMutation}:
 \begin{itemize}[nosep]
-  \item \texttt{edge\_id}: string of the form \texttt{L\{layer\}\_N\{in\}\_to\_L\{layer+1\}\_N\{out\}}
+  \item \texttt{edge\_id}: form \texttt{L\{layer\}\_N\{in\}\_to\_L\{layer+1\}\_N\{out\}}
   \item \texttt{action}: one of \texttt{PRUNE}, \texttt{REPLACE}, \texttt{KEEP}
   \item \texttt{formula}: for \texttt{REPLACE}, a PyTorch expression from the allowlisted vocabulary
-  \item \texttt{initial\_params}: optional \texttt{\{scale, shift, coeff\}} for warm initialization of the new edge
+  \item \texttt{initial\_params}: optional \texttt{\{scale, shift, coeff\}} for warm initialization
   \item \texttt{reasoning}: quantitative justification citing L1 norms and sampled activation values
 \end{itemize}
 
-Higher-level decision types (\texttt{ReflexDecision}, \texttt{StrategicDecision}) contain lists of mutations plus additional meta-fields for regime analysis and training control. The DSL is both the API contract between the agent and the backend and the audit trail: every topology change is stored with its full reasoning chain, making the system's behavior inspectable and replayable.
+To make the interface concrete, the following is a representative end-to-end trace:
+an analyst submits the text \emph{``COMEX silver inventories fell 8\% overnight; demand
+shock likely''}, and the agent emits:
+
+\begin{lstlisting}[language=Python,basicstyle=\ttfamily\footnotesize]
+{
+  "training_command": "CONTINUE",
+  "regime_analysis": {"hmm_transition_detected": true,
+                       "predicted_regime": 2,
+                       "thesis_statement": "Inventory shock..."},
+  "mutations": [
+    {"edge_id": "L0_N0_to_L1_N3",
+     "action": "REPLACE",
+     "formula": "torch.exp(-torch.abs(x))",
+     "reasoning": "L1 norm 0.0031 < 0.005; shape matches decaying exponential",
+     "initial_params": {"scale": 1.0}}
+  ]
+}
+\end{lstlisting}
+
+The schema validates this JSON object (types, Literal constraints, field presence)
+before it reaches the mutation pipeline; it is rejected and retried if any field
+violates the schema.
 
 \subsection{End-to-End Coordination}
 \label{sec:arch:coord}
 
-The \texttt{EngineCoordinator} manages the four bounded queues that connect the training loop to the agent background threads:
+The \texttt{EngineCoordinator} manages four bounded queues:
 \begin{itemize}[nosep]
-  \item \texttt{reflex\_queue} (maxsize=1): training loop $\to$ System~1 thread. Only the most recent context is retained; if a new context arrives before the previous one is processed, the old one is discarded.
+  \item \texttt{reflex\_queue} (maxsize=1): training loop $\to$ System~1 thread.
+  Latest-context-only: old context discarded if not yet consumed.
   \item \texttt{reflex\_decision\_queue} (maxsize=32): System~1 thread $\to$ training loop.
   \item \texttt{strategic\_queue} (maxsize=1): training loop $\to$ System~2 thread.
   \item \texttt{strategic\_decision\_queue} (maxsize=32): System~2 thread $\to$ training loop.
 \end{itemize}
 
-The maxsize=1 policy on input queues implements \emph{latest-context-only} semantics: the agent always reasons about the most recent model state, not about a stale state from several hundred training steps ago. The maxsize=32 on output queues limits memory consumption under worst-case LLM latency with a drop-oldest eviction policy when full.
-
-At the start of each training batch, the loop calls \texttt{apply\_pending\_mutations(model, optimizer)}, which is a non-blocking drain of both output queues. If no decisions are pending, the drain returns immediately and training continues at full GPU throughput. The GPU never waits on the LLM.
+At the start of each training batch, \texttt{apply\_pending\_mutations(model, optimizer)}
+non-blockingly drains both output queues. If no decisions are pending, training
+continues at full GPU throughput. The GPU never waits on the LLM.
 
 % =====================================================================
 \section{Correctness and Security}
 \label{sec:security}
 % =====================================================================
 
-The topology agent introduces an attack surface that conventional neural networks do not have: it evaluates LLM-generated Python expressions inside a running training process. This section describes the threats and the defenses.
+The topology agent introduces an attack surface that conventional neural networks do not
+have: it evaluates LLM-generated Python expressions inside a running training process.
 
 \subsection{The Code Injection Problem}
 
-The original implementation of the symbolic edge module evaluated formula strings via Python's \texttt{eval()}:
+The original implementation evaluated formula strings via Python's \texttt{eval()}:
 \begin{lstlisting}[language=Python]
 out = eval(self.expression_str, {"torch": torch}, {"x": x})
 \end{lstlisting}
-We confirmed that this is trivially exploitable. A formula string containing \texttt{'\_\_import\_\_("os").system("rm -rf /")'} executes a shell command at evaluation time with the full privileges of the training process. Since the formula string originates from an LLM — which could be adversarially prompted, subject to prompt injection from document inputs, or compromised in a supply chain attack — this constitutes a critical, exploitable vulnerability in any production deployment.
+This is trivially exploitable. A formula string
+\texttt{'\ldots\_\_import\_\_("os").system("rm -rf /")'} executes a shell command at
+evaluation time with the full privileges of the training process. Since the formula
+string originates from an LLM — which could be adversarially prompted or subject to
+prompt injection from document inputs — this is a critical vulnerability in any
+production deployment.
 
 \subsection{AST Allowlist Validation}
 
-We fix this with a static abstract syntax tree (AST) analysis pass that runs \emph{before the expression is stored}, let alone evaluated. The validator walks every AST node in the parsed expression and raises an error on any node type or name that is not in the explicit allowlist:
+We fix this with a static AST analysis pass that runs \emph{before the expression is
+stored}:
 
 \begin{lstlisting}[language=Python]
 _ALLOWED_TORCH_FUNCS = frozenset({
@@ -402,19 +718,37 @@ def _validate_symbolic_expression(expr: str) -> None:
             raise ValueError(f"Disallowed node '{type(node).__name__}'")
 \end{lstlisting}
 
-The validator blocks: module imports (\texttt{\_\_import\_\_}), built-in function calls (\texttt{eval}, \texttt{open}, \texttt{exec}), lambda expressions, attribute chains (\texttt{\_\_class\_\_.\_\_bases\_\_}), and any name other than \texttt{x} and \texttt{torch}. Exactly 20 explicitly enumerated \texttt{torch.*} functions pass the allowlist check — all of which are smooth, differentiable, and appropriate for $C^2$ PDE activations.
-
 \begin{proposition}
-Any expression passing \texttt{\_validate\_symbolic\_expression} is restricted to arithmetic combinations of the 20 allowlisted \texttt{torch.*} functions applied to the variable \texttt{x}. It cannot import modules, access the file system, or invoke arbitrary Python builtins.
+Any expression passing \texttt{\_validate\_symbolic\_expression} is restricted to
+arithmetic combinations of the 20 allowlisted \texttt{torch.*} functions applied to
+the variable \texttt{x}. It cannot import modules, access the file system, or invoke
+arbitrary Python builtins.
 \end{proposition}
+\begin{proof}[Proof sketch]
+The \texttt{ast.walk} traversal visits every node in the parse tree. The validator
+partitions all possible AST node types into three exhaustive cases and raises on any
+unexpected case: \emph{(i)} safe structural nodes (\texttt{\_SAFE\_AST\_NODES}) are
+passed through; \emph{(ii)} \texttt{ast.Name} nodes are permitted only for identifiers
+\texttt{x} and \texttt{torch}, blocking all other variable references and built-in
+names (including \texttt{\_\_import\_\_}, \texttt{eval}, \texttt{open}); \emph{(iii)}
+\texttt{ast.Attribute} nodes are permitted only as \texttt{torch.\{attr\}} where
+\texttt{attr} is in the 20-function allowlist, blocking chained attribute access
+(\texttt{\_\_class\_\_.\_\_bases\_\_}). Any node type not in these three cases raises
+immediately. No path to module import, file I/O, or builtins survives the traversal.
+\end{proof}
 
 \begin{remark}
-The allowlist vocabulary was designed around $C^2$ continuity requirements: all 20 functions are smooth on their natural domains, and the validator implicitly filters the discontinuous functions (\texttt{sign}, \texttt{floor}, \texttt{ceil}) to cases where the agent has explicitly reasoned about their applicability. A future hardened version should additionally verify differentiability at runtime by probing second derivatives on a sample grid.
+The allowlist vocabulary was designed around $C^2$ continuity requirements: all 20
+functions are smooth on their natural domains. A future hardened version should
+additionally verify differentiability at runtime by probing second derivatives on a
+sample grid.
 \end{remark}
 
 \subsection{Correct Pruning Semantics}
 
-An earlier implementation represented a pruned edge as \texttt{nn.Sequential()}, the identity function under the default PyTorch module. This makes \texttt{PRUNE} semantically equivalent to \texttt{KEEP}: the pruned edge continues to pass its input signal through unchanged. We replace this with an explicit zero module:
+An earlier implementation represented a pruned edge as \texttt{nn.Sequential()}, the
+identity under default PyTorch, making \texttt{PRUNE} semantically equivalent to
+\texttt{KEEP}. We replace this with:
 
 \begin{lstlisting}[language=Python]
 class ZeroEdge(nn.Module):
@@ -422,11 +756,15 @@ class ZeroEdge(nn.Module):
         return torch.zeros_like(x)
 \end{lstlisting}
 
-\texttt{ZeroEdge} correctly removes the edge's contribution to the downstream node aggregation, enabling genuine network sparsification when the agent prunes low-norm edges.
+\texttt{ZeroEdge} correctly removes the edge's contribution from downstream aggregation,
+enabling genuine network sparsification.
 
 \subsection{Atomic Mutation Rollback}
 
-A mutation batch may fail mid-execution: a formula may pass static AST validation but fail at runtime due to a numerical instability in second-order gradient verification. Without rollback, the model is left in a \emph{partially mutated} state, which is worse than either the original or the target state. We address this by snapshotting all affected edge modules via \texttt{copy.deepcopy} before applying any mutations:
+A mutation batch may fail mid-execution if a formula passes AST validation but fails at
+runtime. Without rollback, the model is left in a \emph{partially mutated} state. We
+prevent this by snapshotting all affected edge modules via \texttt{copy.deepcopy}
+before applying any mutations and restoring them on any exception:
 
 \begin{algorithm}
 \caption{Atomic Mutation Application with Rollback}
@@ -447,38 +785,9 @@ A mutation batch may fail mid-execution: a formula may pass static AST validatio
 \end{algorithmic}
 \end{algorithm}
 
-A note on why \texttt{state\_dict} snapshots are insufficient: \texttt{swap\_edge} replaces entire \texttt{nn.Module} objects. A \texttt{BSplineEdge} state dict cannot be loaded into a \texttt{C2SymbolicEdge}, nor vice versa, because they have different parameter structures. The rollback therefore snapshots \emph{module objects} rather than parameter tensors.
-
-% =====================================================================
-\section{Related Work}
-\label{sec:related}
-% =====================================================================
-
-OpKAN sits at the intersection of three research areas. We review each area with emphasis on the specific gaps that motivated our design choices.
-
-\subsection{Physics-Informed Learning for PDEs}
-
-PINNs \citep{raissi2019physics} convert a PDE boundary value problem into an unconstrained optimization by embedding the differential operator residual in the loss function. The method is architecture-agnostic in principle, but prior applications to financial PDEs \citep{horvath2021deep} have generally used standard MLP backbones. The $C^2$ continuity requirement of the Heston cross-derivative term has received limited attention; in practice, many implementations approximate this term or ignore the $\rho\sigma vS$ coefficient entirely. OpKAN's PI-KAN backbone directly addresses this gap by using activations whose continuity class is guaranteed by construction, not by empirical approximation.
-
-Finite difference methods \citep{wilmott1993option} and Monte Carlo simulation remain standard numerical baselines for Heston PDE evaluation. They are accurate but computationally rigid: re-solving under shifted parameters (a regime change) requires re-running the solver, whereas a trained PI-KAN can be queried continuously while its topology is being modified asynchronously.
-
-\subsection{Kolmogorov-Arnold Networks}
-
-The KAN architecture \citep{liu_etal_2024_kan} places learnable activation functions on edges rather than nodes, enabling edge-level interpretability and surgical symbolic replacement. The theoretical foundation is Kolmogorov's superposition theorem \citep{kolmogorov1957representation}. For our purposes, the key practical advantage over MLPs is the combination of $C^2$ B-spline activations and the ability to replace individual edges with symbolic functions discovered through agent reasoning.
-
-MonoKAN \citep{polo_molina_etal_2024_monokan} extends KANs with certified monotonicity constraints. This is the direction OpKAN's architecture should evolve: the current system achieves regime-ordered pricing behavior through an external semantic controller, not through native architectural monotonicity. Selective replacement of B-spline edges with MonoKAN-style certified monotone variants is a stated future goal (Section~\ref{sec:future}).
-
-\subsection{LLM Tool Use and Structured Output}
-
-Toolformer \citep{schick_etal_2023_toolformer} and ReAct \citep{yao_etal_2023_react} establish that LLMs can learn to invoke external tools and APIs. Prior work in quantitative finance has explored LLM-augmented trading systems, but these systems typically treat the LLM as a direct decision-maker or a generic function-caller. OpKAN's topology management agent takes a different position: the LLM is a \emph{source of structured commands}, not a source of quantitative judgments. Its output is not an option price or a volatility estimate; it is a typed DSL object that drives a specialist backend. This distinction has operational consequences: a generic tool call can fail silently or produce financially inconsistent outputs, while a DSL command is validated by a Pydantic schema before it is applied, and the validation failure itself is auditable.
-
-\subsection{Market Regime Detection}
-
-Gaussian HMMs for market regime detection follow Hamilton's foundational work \citep{hamilton1989new} on nonlinear regime-switching time series. The label stability problem under rolling re-estimation is well known but rarely addressed explicitly in applied work. Our realized-volatility sorting approach (Section~\ref{sec:arch:hmm}) is a simple, effective fix grounded in the empirical regularity that realized volatility is the most discriminative feature for separating market regimes in our feature set.
-
-\subsection{Dual-Process AI Architectures}
-
-Kahneman's dual-process framework \citep{kahneman2011thinking} has been applied to AI agent design in several contexts, most often to separate fast reactive loops from slow planning loops in robotics and game-playing systems. The specific combination of an LLM fast path and an LLM slow path operating on the same set of queues — with both paths producing typed, schema-validated outputs that feed the same mutation pipeline — is, to our knowledge, a novel application of this pattern to neural network topology management.
+\texttt{state\_dict} snapshots are insufficient because \texttt{swap\_edge} replaces
+entire \texttt{nn.Module} objects; a \texttt{BSplineEdge} state dict cannot be loaded
+into a \texttt{C2SymbolicEdge}. We snapshot module objects rather than parameter tensors.
 
 % =====================================================================
 \section{Experimental Investigation}
@@ -487,53 +796,102 @@ Kahneman's dual-process framework \citep{kahneman2011thinking} has been applied 
 
 \subsection{Research Questions}
 
-Our experiments are organized as preliminary investigations into six questions, each targeting a specific layer or interface of the architecture. We frame them as questions rather than hypotheses to signal that the current results are exploratory and raise follow-up problems rather than resolving them.
+Our experiments are preliminary investigations into six questions targeting specific
+layers of the architecture. We frame them as questions rather than hypotheses to signal
+that the current results raise follow-up problems rather than resolving them.
 
 \begin{enumerate}[label=\textbf{RQ\arabic*}]
-  \item \textbf{Protocol validity.} Can the topology agent reliably compile direct and narrative prompts into valid, executable DSL while preserving the analyst's domain intent? And does performance degrade gracefully or catastrophically when moving from short curated prompts to longer document-grounded prompts?
+  \item \textbf{Protocol validity.} Can the agent reliably compile direct and narrative
+  prompts into valid, executable DSL while preserving the analyst's domain intent?
+  Does performance degrade gracefully or catastrophically with longer document context?
 
-  \item \textbf{Paraphrase stability.} Is the compiled DSL stable under paraphrase? That is, does rewording the same analyst intent produce a functionally equivalent DSL command, or does surface variation in the prompt produce semantically different actions?
+  \item \textbf{Paraphrase stability.} Is the compiled DSL stable under paraphrase?
+  Does rewording the same analyst intent produce a functionally equivalent DSL command?
 
-  \item \textbf{Normalization gap.} How large is the gap between the agent producing a \emph{valid} DSL command and producing the \emph{same} DSL command a human analyst would have produced? This gap measures how far the system is from full analyst automation.
+  \item \textbf{Normalization gap.} How large is the gap between the agent producing a
+  \emph{valid} DSL command and producing the \emph{same} DSL command a human analyst
+  would have produced?
 
-  \item \textbf{Regime coherence.} Does routing a fixed query through different regime contexts (stable, transition, stress) produce directionally ordered backend outputs? This tests whether the explicit semantic controller layer works correctly.
+  \item \textbf{Regime coherence.} Does routing a fixed query through STABLE, TRANSITION,
+  and STRESS regime contexts produce directionally ordered backend outputs? This tests
+  whether the explicit semantic controller works correctly and whether PDE residual
+  minimization alone is sufficient for regime ordering.
 
-  \item \textbf{Pricing performance.} Which combination of physics model and learned residual produces the lowest price MAE in each regime? And is the advantage of the regime-conditioned hybrid consistent across assets?
+  \item \textbf{Pricing performance.} Which combination of physics model and learned
+  residual produces the lowest price MAE in each regime? Is the hybrid advantage
+  consistent across assets?
 
-  \item \textbf{Engineering headroom.} Does the asynchronous dual-queue architecture maintain full GPU training throughput under concurrent LLM interaction? Does the decision queue overflow under realistic LLM latencies?
+  \item \textbf{Engineering headroom.} Does the asynchronous dual-queue architecture
+  maintain full GPU training throughput under concurrent LLM interaction?
 \end{enumerate}
 
 \subsection{Experimental Setup}
 
-\textbf{Hardware.} All GPU experiments run on NVIDIA H200 with CUDA. LLM inference uses Ollama (local) with \texttt{qwen2.5-coder} for protocol benchmarks and vLLM for the engineering stress test.
+\textbf{Hardware.} All GPU experiments run on NVIDIA H200 with CUDA. LLM inference uses
+Ollama (local) with \texttt{qwen2.5-coder} for protocol benchmarks and vLLM for the
+engineering stress test. We use a code-specialized model for the protocol benchmarks
+because the DSL has strongly code-like syntax (typed JSON schema, identifier
+conventions), and code models demonstrate superior structured-output adherence in our
+preliminary tests.
 
-\textbf{Data.} The pricing benchmarks use SLV (silver ETF) option chains with real historical regime features. The live benchmark uses one quote date (cross-sectional split). The replay benchmark uses a historical silver/regime feature sequence with a replayed SLV surface template, enabling evaluation across stable, transition, and stress dates.
+\textbf{Data.} The pricing benchmarks use SLV (silver ETF) option chains with real
+historical regime features. The live benchmark uses one quote date (cross-sectional
+split). The replay benchmark uses a historical silver/regime feature sequence with a
+replayed SLV surface template, enabling evaluation across stable, transition, and
+stress dates.
 
-\textbf{Baselines.} We compare six model families:
+\textbf{Model families.} We compare six families. The \texttt{spikan\_*} variants all
+use a Symbolic PI-KAN (B-spline edges with some agent-replaced symbolic edges) as the
+base model; they differ in their pricing formula anchor and residual type:
 \begin{itemize}[nosep]
   \item \texttt{bs\_plain}: Black-Scholes with baseline ATM volatility.
-  \item \texttt{bs\_regime}: Black-Scholes with regime-predicted volatility.
+  \item \texttt{bs\_regime}: Black-Scholes with HMM regime-predicted volatility.
   \item \texttt{rf\_direct}: Random forest direct price prediction from structured features.
-  \item \texttt{spikan\_hybrid}: Regime-volatility anchored Symbolic PI-KAN residual hybrid.
-  \item \texttt{spikan\_plain\_hybrid}: Plain-formula anchored Symbolic PI-KAN residual hybrid.
-  \item \texttt{spikan\_plain\_iv\_hybrid}: Plain-formula anchor with learned IV residual (headline hybrid).
+  \item \texttt{spikan\_hybrid}: Symbolic PI-KAN residual added to a \emph{regime-vol} Black-Scholes anchor.
+  \item \texttt{spikan\_plain\_hybrid}: Symbolic PI-KAN residual added to a \emph{plain-formula} Black-Scholes anchor (no regime conditioning on the anchor).
+  \item \texttt{spikan\_plain\_iv\_hybrid}: Plain-formula anchor with a learned \emph{IV-space} residual. This is the headline hybrid: it corrects the implied volatility surface rather than the price directly.
 \end{itemize}
 
-\textbf{Evaluation metrics.} Protocol tiers: execution rate, intent-match rate, DSL validity rate, semantic signature match, group consistency. Pricing tiers: price MAE by regime, IV MAE on the live surface. Engineering: throughput (samples/sec), queue overflow count, GPU blocking time (ms).
+\textbf{Evaluation metrics.} Protocol tiers: execution rate, intent-match rate, DSL
+validity rate, semantic signature match, group consistency. Pricing tiers: price MAE by
+regime, IV MAE on the live surface. Engineering: throughput (smp/sec), queue overflow
+count, GPU blocking time (ms).
+
+\textbf{Note on sample sizes.} The protocol benchmarks involve 15–23 prompts and 4
+paraphrase groups. At these sizes, individual results (especially group-level pass rates
+such as 3/4 = 0.75) should be interpreted as directional estimates rather than precise
+measurements. We do not report confidence intervals because bootstrapping 23 binary
+outcomes produces very wide intervals that would obscure rather than illuminate the
+findings. The appropriate response to this limitation is to increase benchmark scale
+in future work, not to over-interpret the current point estimates.
 
 \subsection{Protocol Benchmark Tiers}
 
-The protocol evaluation is structured in tiers of increasing difficulty.
+\textbf{Tier 0A (Curated benchmark):} 15 prompts (9 direct, 6 narrative) spanning
+\texttt{OUTLOOK}, \texttt{QUOTE}, \texttt{SURFACE}, and \texttt{SCENARIO} operations,
+written in the style of the system prompt and few-shot examples. This tier establishes
+the \emph{floor of protocol viability} — it does not measure generalization to
+out-of-distribution prompts.
 
-\textbf{Tier 0A (Curated benchmark):} 15 prompts (9 direct, 6 narrative) spanning \texttt{OUTLOOK}, \texttt{QUOTE}, \texttt{SURFACE}, and \texttt{SCENARIO} operations, close in style to the system prompt and few-shot examples. This tier tests the floor of protocol viability.
+\textbf{Tier 0B (Document-grounded benchmark):} 8 prompts derived from real local
+document excerpts (fluid dynamics notes, COMEX inventory summaries, regime-shift
+research notes) with analyst requests appended. This tier tests robustness to longer,
+noisier context and is the primary evidence tier for deployment planning.
 
-\textbf{Tier 0B (Document-grounded benchmark):} 8 prompts derived from real document excerpts (fluid dynamics notes, COMEX inventory summaries, regime-shift research notes) with analyst requests appended. This tier tests robustness to longer, noisier context.
+\textbf{Tier 0C (Semantic stability benchmark):} Paraphrase groups, each containing
+multiple phrasings of the same analyst intent. Tests whether the DSL action is
+invariant to surface variation.
 
-\textbf{Tier 0C (Semantic stability benchmark):} Paraphrase groups, each containing multiple phrasings of the same analyst intent. Tests whether the DSL action is invariant to surface variation.
+\textbf{Tier 0D (Regime-action coherence benchmark):} Holds the query family fixed and
+varies only the DSL regime instruction (\texttt{STABLE}, \texttt{TRANSITION},
+\texttt{STRESS}). The five financial monotonicity checks test whether the backend
+responds with directionally ordered outputs under each regime context.
 
-\textbf{Tier 0D (Regime-action coherence benchmark):} Holds the query family fixed and varies only the DSL regime instruction (\texttt{STABLE}, \texttt{TRANSITION}, \texttt{STRESS}). Tests whether the five financial monotonicity checks pass under each regime.
-
-\textbf{Tier 0E (Document-to-gold agreement):} Human-authored gold DSL commands are specified in advance for each document-grounded prompt. The agent output is compared at three levels: exact normalized string equality, semantic signature equality, and executed-result equality. This is the strictest tier.
+\textbf{Tier 0E (Document-to-gold agreement):} Human-authored gold DSL commands are
+specified in advance for each document-grounded prompt. Agent output is compared at
+three levels: exact normalized string equality, semantic signature equality, and
+executed-result equality. This is the strictest tier and the primary measure of
+distance from full analyst automation.
 
 % =====================================================================
 \section{Results and Findings}
@@ -542,9 +900,12 @@ The protocol evaluation is structured in tiers of increasing difficulty.
 
 \subsection{RQ1 -- Protocol Validity}
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
-\caption{Protocol results by context tier (Tier 0A and 0B). Execute = fraction of prompts that produced valid, executable DSL. Intent = fraction where the executed DSL action matched the analyst's stated goal.}
+\caption{Protocol results by context tier. Execute = fraction producing valid,
+executable DSL. Intent = fraction matching the analyst's stated goal. Tier~0A is a
+floor check (prompts written in-distribution with the system prompt); Tier~0B is the
+primary evidence tier (derived from real document excerpts).}
 \begin{tabular}{@{}lcccc@{}}
 \toprule
 Context & Cases & Execute & Intent & Mean latency (s) \\ \midrule
@@ -557,22 +918,32 @@ Document-grounded (0B) & 8 & 1.00 & 1.00 & 2.747 \\
 \label{tab:protocol}
 \end{table}
 
-All 15 curated prompts and all 8 document-grounded prompts produce valid, executable DSL that matches the analyst's intent. This answers the floor-level question: the semantic compiler design is viable on prompts in the style of the system prompt.
+All 15 curated and all 8 document-grounded prompts produce valid, executable DSL. The
+Tier~0A result (1.00 on in-distribution prompts) establishes viability but not
+generalization. The Tier~0B result — maintaining 1.00 intent-match on prompts derived
+from documents the system prompt was not designed around — is the more meaningful
+finding.
 
-The 4$\times$ latency increase from direct (0.78s) to document-grounded (2.75s) context reflects the cost of processing report-length inputs. This is a genuine deployment tradeoff: document-grounded latency is acceptable for the slow strategic path (which runs every 100 training steps) but not for the fast reflexive path (which must stay under 50ms).
+The $4\times$ latency increase from direct (0.78\,s) to document-grounded (2.75\,s)
+reflects a genuine deployment tradeoff: document-grounded latency is acceptable for
+the slow strategic path (System~2, 100-step period) but not for the fast reflexive
+path (System~1, must stay under 50\,ms).
 
-Representative compiled outputs from Tier 0B:
+Representative compiled outputs from Tier~0B:
 \begin{itemize}[nosep]
   \item Fluid-dynamics excerpt $\to$ \texttt{OUTLOOK asset=silver horizon=10d backdrop=STRESS} (shock-risk score 13.45)
-  \item COMEX inventory note $\to$ \texttt{QUOTE call spot=31 strike=32 expiry=45d vol=kan\_regime backdrop=STRESS rate=5\%} (price 0.4460, implied vol 0.1780)
+  \item COMEX inventory note $\to$ \texttt{QUOTE call spot=31 strike=32 expiry=45d vol=kan\_regime backdrop=STRESS rate=5\%}
   \item Regime-shift challenge $\to$ \texttt{SURFACE vol asset=silver regime=STRESS strikes=[0.9,1.0,1.1] T=30d}
 \end{itemize}
 
 \subsection{RQ2 -- Paraphrase Stability}
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
-\caption{Semantic stability benchmark (Tier 0C). ``Group'' metrics require all paraphrases within a group to produce the same DSL action and execution result.}
+\caption{Semantic stability benchmark (Tier~0C). ``Group'' metrics require all
+paraphrases within a group to produce the same DSL action and execution result.
+$n=4$ paraphrase groups; interpret the 0.75 group pass rate as a directional estimate
+from a small sample.}
 \begin{tabular}{@{}lc@{}}
 \toprule
 Metric & Value \\ \midrule
@@ -587,15 +958,24 @@ All-group pass rate & 0.75 \\ \bottomrule
 \label{tab:stability}
 \end{table}
 
-Three of four paraphrase groups fully preserve both the DSL action and the executed outcome across all phrasings. The failing group (\texttt{transition\_surface}) exposes a specific normalization ambiguity: one paraphrase caused the agent to expand a three-point strike grid to five points while correctly identifying the regime and operation type. This is not a comprehension failure — the output is valid and intent-matching — but it is a normalization failure: the agent made a legitimate but different structural choice than the reference case.
+Three of four paraphrase groups fully preserve both the DSL action and the executed
+outcome across all phrasings. The failing group (\texttt{transition\_surface}) exposes a
+specific normalization ambiguity: one paraphrase caused the agent to expand a
+three-point strike grid to five points while correctly identifying the regime and
+operation. This is a normalization failure (different structural choice) rather than a
+comprehension failure (wrong intent).
 
-The 0.75 group pass rate is the key number for deployment planning: three out of four equivalent analyst queries will produce identical backend behavior; one in four will produce a behaviorally different but intent-preserving command. Closing this gap is a system-prompt engineering problem (tighter normalization contracts, more strike-grid few-shot examples), not an architectural one.
+The 0.75 group pass rate — noting the small $n=4$ caveat above — suggests that one in
+four equivalent analyst queries may produce a behaviorally different but intent-preserving
+command. Closing this gap is a system-prompt engineering problem (Section~\ref{sec:limfuture}), not an architectural one.
 
 \subsection{RQ3 -- Normalization Gap}
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
-\caption{Document-to-gold agreement (Tier 0E). ``Exact'' = normalized string equality with the human-authored gold DSL. ``Semantic'' = same DSL operation family and regime. ``Result'' = same executed numerical output.}
+\caption{Document-to-gold agreement (Tier~0E; $n=8$ prompts). ``Exact'' = normalized
+string equality with the human-authored gold DSL. ``Semantic'' = same DSL operation
+family and regime. ``Result'' = same executed numerical output.}
 \begin{tabular}{@{}lc@{}}
 \toprule
 Metric & Value \\ \midrule
@@ -609,37 +989,64 @@ Result agreement & 0.75 \\ \bottomrule
 \label{tab:gold}
 \end{table}
 
-The gap between exact agreement (0.375) and semantic/result agreement (0.75) is the central diagnostic signal of the evaluation. The system reliably produces valid, executable, semantically aligned DSL. It does not yet reliably produce the \emph{exact} structured form a human analyst would have chosen.
-
-Both categories of failure are interpretable. The first is \emph{regime under-escalation}: prompts that a human analyst would compile as \texttt{STRESS} are compiled as \texttt{TRANSITION} by the agent. The second is \emph{surface grid broadening}: the agent expands strike or tenor grids beyond the minimal reference specification. Neither failure represents a semantic misunderstanding; both represent different but valid structural choices. This motivates a concrete future direction: explicit normalization contracts in the system prompt and alias-normalization examples in the few-shot context.
+The gap between exact agreement (0.375) and semantic/result agreement (0.75) is the
+central diagnostic signal of the evaluation. The system reliably produces valid,
+semantically aligned DSL but does not reliably produce the \emph{exact} form a human
+analyst would have chosen. Both failure modes are interpretable: \emph{regime
+under-escalation} (STRESS compiled as TRANSITION) and \emph{surface grid broadening}
+(three-point grid expanded to five). Neither represents a semantic misunderstanding;
+both represent different but valid structural choices. The path to improvement is
+contract tightening on the system prompt, not architectural change.
 
 \subsection{RQ4 -- Regime Coherence}
+\label{sec:rq4}
 
-\begin{table}[h]
+To test regime coherence, we define two Heston parameter sets that represent canonical
+market conditions. The \textbf{STABLE} anchor uses $(\kappa{=}3.0,\,\theta{=}0.02,\,
+\sigma{=}0.15,\,\rho{=}{-}0.50)$, representing a calm, mean-reverting market with low
+vol-of-vol. The \textbf{STRESS} anchor uses $(\kappa{=}0.5,\,\theta{=}0.09,\,
+\sigma{=}0.60,\,\rho{=}{-}0.85)$, representing a crash-risk environment with slow
+mean-reversion and high vol-of-vol. Both sets use $r{=}0.05$, $K{=}100$, $T{=}1$. We
+query each model at 500 uniformly sampled $(S,v,t)$ points and check five monotonicity
+conditions.
+
+\begin{table}[ht]
 \centering
-\caption{Financial monotonicity checks under explicit DSL regime overrides (Tier 0D). ``Raw'' = KAN/Symbolic PI-KAN evaluated directly on empirical regime anchors. ``Semantic controller'' = explicit controller with monotone projection applied over raw outputs.}
+\caption{Financial monotonicity checks under explicit DSL regime overrides (Tier~0D).
+``Raw'' = model queried directly under the STABLE/STRESS Heston parameter anchors.
+``With Semantic Controller'' = explicit controller with monotone projection applied
+over raw outputs. All five checks fail for the raw model; all five pass with the
+controller.}
 \begin{tabular}{@{}lcc@{}}
 \toprule
 Monotonicity Check & Raw Output & With Semantic Controller \\ \midrule
-Quote implied vol: STABLE $\to$ STRESS & \texttimes & \checkmark \\
-Quote price: STABLE $\to$ STRESS & \texttimes & \checkmark \\
-Surface mean vol: STABLE $\to$ STRESS & \texttimes & \checkmark \\
-Outlook shock-score: STABLE $\to$ STRESS & \texttimes & \checkmark \\
-Shock-risk labels ordered low to high & \texttimes & \checkmark \\
+Quote implied vol: STABLE $\to$ STRESS & $\times$ & \checkmark \\
+Quote price: STABLE $\to$ STRESS & $\times$ & \checkmark \\
+Surface mean vol: STABLE $\to$ STRESS & $\times$ & \checkmark \\
+Outlook shock-score: STABLE $\to$ STRESS & $\times$ & \checkmark \\
+Shock-risk labels ordered low to high & $\times$ & \checkmark \\
 \bottomrule
 \end{tabular}
 \label{tab:coherence}
 \end{table}
 
-This result has a specific interpretation that is important not to elide: the raw KAN and Symbolic PI-KAN outputs, evaluated on empirical regime anchors, fail all five monotonicity checks. This is not a sign that the learned model is broken — it is a sign that the model learned a function that fits the training data well but does not generalize monotone ordering to out-of-distribution regime inputs. Adding an explicit semantic controller (empirical anchors + monotone projection) restores all five checks.
-
-The key architectural insight is that \emph{monotonicity is currently a property of the control layer, not of the learned weights}. The raw learned model is flexible; the controller provides the discipline. Whether it is better to achieve monotonicity natively (via training objectives or architecture) or extrinsically (via controller) is an open research question addressed in Section~\ref{sec:future}.
+This result requires careful interpretation. The raw model failing all five checks does
+not mean the model is wrong; it means PDE residual minimization is an
+\emph{insufficient} training objective for producing regime-ordered behavior when
+queried at out-of-distribution parameter sets. The model correctly minimizes what it
+was trained on. The key architectural insight is that \emph{monotonicity is currently
+a property of the control layer, not of the learned weights}. Whether monotonicity
+should be built into the training objective (via ranking losses) or the architecture
+(via MonoKAN substitution) is the most direct open research question this result raises.
 
 \subsection{RQ5 -- Pricing Performance}
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
-\caption{Replay price MAE by market regime for selected models. Lower is better. Values represent mean absolute error on the SLV option chain.}
+\caption{Replay price MAE by market regime. Lower is better. \texttt{spikan\_plain\_iv\_hybrid}
+adds a learned IV-space residual to a plain Black-Scholes anchor (no regime conditioning
+on the anchor); \texttt{spikan\_plain\_hybrid} adds a price-space residual to the same
+anchor. See Section~\ref{sec:experiments} for full model definitions.}
 \begin{tabular}{@{}lcccc@{}}
 \toprule
 Model & Stable & Transition & Stress & Overall \\ \midrule
@@ -652,9 +1059,11 @@ Model & Stable & Transition & Stress & Overall \\ \midrule
 \label{tab:replay}
 \end{table}
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
-\caption{Live term-surface results (one quote date, cross-sectional split). IV MAE tests the model's ability to reconstruct the observed implied volatility surface.}
+\caption{Live term-surface results (one quote date, cross-sectional split; see
+Limitation~1). IV MAE measures the ability to reconstruct the observed implied
+volatility surface.}
 \begin{tabular}{@{}lcc@{}}
 \toprule
 Model & Price MAE & IV MAE \\ \midrule
@@ -667,17 +1076,24 @@ Model & Price MAE & IV MAE \\ \midrule
 \label{tab:live}
 \end{table}
 
-Two observations stand out. First, the IV-residual hybrid (\texttt{spikan\_plain\_iv\_hybrid}) achieves the best overall replay MAE (0.9317) with particular strength in transition (1.46) and stress (0.42) — the conditions where regime-conditioned corrections matter most. In stable conditions, plain Black-Scholes (0.84) remains the best single model, consistent with the expectation that the analytic formula is most accurate when market conditions match its assumptions.
+The IV-residual hybrid achieves the best overall replay MAE (0.9317), with particular
+strength in transition (1.46) and stress (0.42) — the conditions where regime-conditioned
+corrections matter most. In stable conditions, plain Black-Scholes (0.84) is the best
+single model, consistent with the formula being most accurate when market conditions
+match its assumptions. The random-forest baseline is the best IV reconstructor (IV
+MAE 0.0781) but the worst replay pricer overall (6.82) — the canonical pattern of a
+model that minimizes in-distribution reconstruction error but generalizes poorly under
+distributional shift.
 
-Second, the random-forest baseline is the best IV reconstructor (IV MAE 0.0781) but the worst replay pricer overall (6.82). This is the canonical expression of a known phenomenon: pure ML models that minimize reconstruction error on structured inputs do not generalize well under distributional shift, here a regime transition from the training distribution.
-
-\begin{table}[h]
+\begin{table}[ht]
 \centering
-\caption{Cross-asset pricing summary. The best model family and its price MAE vary substantially across assets, reflecting different regime signal relevance.}
+\caption{Cross-asset pricing summary. The best model family and its price MAE vary
+substantially across assets, reflecting different regime signal relevance. See text
+for interpretation.}
 \begin{tabular}{@{}llcc@{}}
 \toprule
-Asset & Dominant Regime Signal & Best Model & Price MAE \\ \midrule
-SLV (silver) & Macro/supply narrative & \texttt{spikan\_plain\_iv\_hybrid} & 0.9317 \\
+Asset & Dominant Signal Type & Best Model & Price MAE \\ \midrule
+SLV (silver) & Macro / supply narrative & \texttt{spikan\_plain\_iv\_hybrid} & 0.9317 \\
 GLD (gold) & Mean-reverting vol structure & \texttt{bs\_plain} & 1.6515 \\
 USO (oil) & Inventory shock / macro & \texttt{spikan\_plain\_iv\_hybrid} & 0.4897 \\
 SOXX (semiconductors) & Structural / earnings & \texttt{rf\_direct} & 1.7194 \\
@@ -687,34 +1103,52 @@ XLK (technology) & Structural / earnings & \texttt{rf\_direct} & 2.5180 \\
 \label{tab:cross_asset}
 \end{table}
 
-The cross-asset results confirm the architecture's domain specificity. The hybrid wins on silver and oil — assets where macro narrative and supply-shock regime interpretation are operationally relevant, which is exactly what the semantic compiler layer is designed to process. Gold favors the Black-Scholes anchor because gold volatility has a stable mean-reverting structure that the textbook formula captures well. Semiconductor and technology equities favor direct RF, because the relevant pricing signals for those assets (earnings surprise, export controls, AI capital expenditure) are not in the current feature set and are not addressed by the current regime labeling scheme.
-
-The cross-asset heterogeneity is not a failure of the architecture. It is a signal about where the architecture's assumptions hold and where they do not.
+The cross-asset results confirm the architecture's domain specificity: the hybrid wins
+on silver and oil (assets where macro narrative and supply-shock interpretation are
+operationally relevant), while gold, semiconductor, and technology equities favor
+simpler baselines. For gold, the mean-reverting vol structure is well-captured by the
+Black-Scholes formula. For SOXX and XLK, the relevant pricing signals (earnings
+surprise, export controls, AI capital expenditure) are absent from the current feature
+set. This is a signal about where feature engineering investment is needed, not a
+failure of the architecture.
 
 \subsection{RQ6 -- Engineering Performance}
+\label{sec:rq6}
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
-\caption{Engineering performance on NVIDIA H200, batch size 4,096.}
+\caption{Engineering performance on NVIDIA H200, batch size 4,096. Training throughput
+(26,300\,smp/sec) is measured during sustained 5-epoch training of 1M rows; the
+standalone \texttt{validate\_e2e.py} microbenchmark reports 6,506\,smp/sec on a 50-step
+cold-start run with a lighter synthetic dataset. Both configurations use identical
+hardware and batch size; the difference reflects startup amortization, not a
+measurement error.}
 \begin{tabular}{@{}lc@{}}
 \toprule
 Metric & Value \\ \midrule
-Training throughput & 26,300 smp/sec \\
-System~1 (fast path) latency & $<$50 ms \\
-System~2 (slow path) latency & 200--500 ms \\
+Sustained training throughput (5 epochs, 1M rows) & 26,300\,smp/sec \\
+E2E microbenchmark throughput (50 steps, cold start) & 6,506\,smp/sec \\
+System~1 (fast path) latency & $<$50\,ms \\
+System~2 (slow path) latency & 200--500\,ms \\
 Decision queue overflows (1M-row stress test) & 0 \\
-GPU blocking time from LLM & 0 ms \\
+GPU blocking time from LLM & 0\,ms \\
 Dual-process vs.\ baseline throughput delta & +4.4\% \\
 \bottomrule
 \end{tabular}
 \label{tab:engineering}
 \end{table}
 
-The asynchronous dual-queue architecture maintains full GPU throughput: in a 1M-row stress test with concurrent LLM decisions issued every 10 steps, there are zero queue overflows and zero milliseconds of GPU blocking. The training loop never waits on the LLM.
+The asynchronous dual-queue architecture maintains full GPU throughput with zero queue
+overflows and zero GPU blocking. The dual-process configuration shows +4.4\% higher
+effective throughput than a pure gradient-descent baseline in the 1M-row stress test.
+A likely contributor is System~1's progressive pruning of near-zero edges, which
+reduces the computational graph size over time. However, we do not have an ablation
+isolating this effect (e.g., pruning count vs. throughput trajectory), so this remains
+a hypothesis for future investigation rather than a confirmed causal claim.
 
-Counterintuitively, the dual-process configuration achieves 4.4\% \emph{higher} effective throughput than a pure gradient descent baseline. The explanation is that System~1's reflexive pruning of near-zero edges reduces the computational graph complexity over time, decreasing the total FLOP count for the Heston PDE residual evaluation. This is not a guaranteed outcome — it depends on the fraction of edges that the agent successfully prunes — but it suggests that topology management and computational efficiency are not in tension when the agent is calibrated correctly.
-
-In a hypothetical synchronous design (where training waits for each LLM decision), a 500ms System~2 decision would block $\approx 3{,}200$ training steps. The asynchronous design reduces this cost to zero.
+In a hypothetical synchronous design, a 500\,ms System~2 decision would block
+$\approx 3{,}200$ training steps at sustained throughput. The asynchronous design
+reduces this cost to zero.
 
 % =====================================================================
 \section{Discussion}
@@ -723,92 +1157,151 @@ In a hypothetical synchronous design (where training waits for each LLM decision
 
 \subsection{What the Architecture Gets Right}
 
-The experiments support three architectural claims, at the level of preliminary evidence.
+Three claims receive preliminary support.
 
-\textbf{The semantic compiler interface is viable.} The combination of Pydantic schema enforcement, AST security validation, and typed DSL makes the LLM's output reliably executable against the quantitative backend. All 23 benchmark prompts across Tiers 0A and 0B produce valid, executable DSL. The protocol layer does what it claims to do: it converts unstructured text into structured commands.
+\textbf{The semantic compiler interface is viable on Tier~0B inputs.} All 8
+document-grounded prompts (derived from documents not used in constructing the system
+prompt) produce valid, executable, intent-matching DSL. This is the meaningful evidence
+threshold: it shows the protocol layer survives context not of its own design.
 
-\textbf{Separation of concerns makes the system debuggable.} Because the LLM, the regime detector, and the pricing engine are cleanly separated, each layer can be evaluated independently. The protocol benchmarks test the semantic compiler in isolation. The monotonicity benchmarks test the control layer in isolation. The pricing benchmarks test the quantitative core in isolation. This means failures are interpretable and localizable — which is not true of end-to-end learned systems where all layers interact opaquely.
+\textbf{Separation of concerns makes the system debuggable.} Because each layer is
+evaluated independently, failures are localizable: a protocol failure does not implicate
+the PDE solver; a monotonicity failure does not implicate the LLM compiler. This
+debuggability is a structural property of the architecture, not an empirical result.
 
-\textbf{Regime-conditioned hybrid is the right pricing architecture for the target use case.} The IV-residual hybrid's relative strength in transition and stress regimes, and its relative weakness in stable regimes where Black-Scholes dominates, is exactly the pattern the architecture predicts: the learned correction is most valuable when market conditions deviate from the textbook formula's assumptions. This is a structural argument, not just an empirical observation.
+\textbf{The IV-residual hybrid is the right pricing architecture for the target use
+case.} The regime-by-regime MAE profile (best in transition and stress, weaker in
+stable) is exactly the pattern the architecture predicts: the learned correction adds
+value when conditions deviate from the analytic formula's assumptions. This is a
+structural argument, not just a post-hoc observation.
 
-\subsection{The Monotonicity Gap: A Design Question, Not a Model Failure}
+\subsection{The Monotonicity Gap: A Training Objective Problem}
 
-The most important finding — and the one that raises the most direct future-work question — is the monotonicity result: the raw Symbolic PI-KAN fails all five financial monotonicity checks when evaluated on empirical regime anchors without the semantic controller.
-
-This result should be read carefully. It does not mean the learned model is wrong; the model was trained to minimize the Heston PDE residual on a collocation grid, not to satisfy monotone regime ordering, and it correctly minimizes what it was trained on. The question is whether PDE-residual minimization is a \emph{sufficient} training objective for producing a regime-ordered pricing model.
-
-The current answer is: not by itself. The regime ordering is enforced by the external controller, not learned by the model. The architectural question this raises is whether training objectives can be enriched with regime-ordering terms (ranking losses, contrastive pairs of stable/stress outputs) such that the monotonicity becomes intrinsic rather than extrinsic. This is the design question that should drive the next architecture iteration.
+The most important finding is that PDE residual minimization is not a sufficient
+training objective for regime-ordered pricing. The model is not wrong; it minimizes
+what it was trained on. The architectural question this raises is whether the training
+objective can be enriched with regime-ordering terms — e.g., ranking losses on pairs
+of STABLE/STRESS outputs — such that monotonicity becomes intrinsic rather than
+requiring an external controller. This is the primary open design question.
 
 \subsection{The Normalization Gap: A Contract Problem}
 
-The gap between exact DSL agreement (0.375) and semantic agreement (0.75) on Tier 0E is a normalization problem. The agent produces valid, semantically appropriate DSL but chooses different parameters (regime label, strike grid size) than the human gold standard. This is structurally similar to a software interface problem: the compiler is correct, but the calling convention is underspecified.
-
-The fix is contract tightening on the system prompt and few-shot examples, not a fundamental architectural change. Specific needed contracts: (a) a monotone escalation rule for regime labels (``when in doubt, escalate rather than underestimate''), (b) a canonical strike grid specification for SURFACE operations (``use the specified grid or the standard [0.9, 1.0, 1.1] grid; do not expand unless explicitly requested'').
+The gap between exact DSL agreement (0.375) and semantic agreement (0.75) on Tier~0E
+is structurally similar to a software calling-convention problem: the compiler is
+correct, but the contract is underspecified. Both failure modes (regime under-escalation
+and grid broadening) can be addressed by tighter normalization rules in the system
+prompt without architectural change.
 
 \subsection{Cross-Asset Transfer: What Domain Specificity Means}
 
-The cross-asset heterogeneity resolves a question that is easy to misframe: ``Is the architecture domain-general?'' The more precise question is: ``For which domains does the regime-aware semantic compiler layer provide added value over the quantitative core alone?''
-
-The answer is: for assets where narrative regime interpretation is part of the pricing problem (silver, oil macro shocks), the architecture provides value. For assets where the pricing signal is predominantly structural and forward-looking (semiconductor earnings, technology capex), the narrative layer does not yet add value because the relevant signals are not in the current feature set. This is a feature, not a limitation: it tells us exactly which feature engineering work is needed to extend the architecture's advantage to equity derivatives.
+The cross-asset heterogeneity is not a failure of the architecture — it is a signal
+about domain fit. The architecture provides value where narrative regime interpretation
+is part of the pricing problem (silver, oil). It provides no value where the pricing
+signal is structural and not in the current feature set (semiconductor earnings,
+technology capex). This tells us precisely which feature engineering is needed to
+extend the architecture's advantage to equity derivatives.
 
 % =====================================================================
-\section{Limitations}
-\label{sec:limitations}
+\section{Limitations and Future Directions}
+\label{sec:limfuture}
 % =====================================================================
 
-We state the following limitations as definite scope boundaries.
+We state the following as definite scope boundaries, each paired with the specific
+next step that would address it.
 
 \begin{enumerate}
-  \item \textbf{Single quote date for the live benchmark.} The live term-surface benchmark uses one quote date with a cross-sectional split. This is a sanity check, not a generalization result. Multi-date historical validation against real vendor option chains is the required next evidence step before any production deployment claim.
+  \item \textbf{Single quote date for the live benchmark.} The live term-surface benchmark
+  uses one quote date with a cross-sectional split — a sanity check, not a
+  generalization result. \emph{Next step}: obtain multi-date historical OPRA tapes
+  (or the public CBOE historical options dataset) and repeat the replay benchmark
+  over a rolling 12-month window.
 
-  \item \textbf{Structural replay, not real historical options.} The replay benchmark uses a replayed SLV surface template, not real historical quotes. The regime path is real; the surface is a proxy. Stress-regime MAE values should be interpreted as evidence of directional correctness, not as production-ready accuracy estimates.
+  \item \textbf{Structural replay, not real historical options.} The replay benchmark
+  uses a replayed SLV surface template, not real historical quotes. Stress-regime MAE
+  values should be interpreted as directional evidence, not production-ready estimates.
+  \emph{Next step}: acquire a real multi-date historical options chain for the same
+  replay period.
 
-  \item \textbf{Curated and near-distribution protocol benchmarks.} The 23 prompts across Tiers 0A and 0B were written in the style of the system prompt and few-shot examples. They demonstrate viability, not robustness to adversarial documents or prompt injection at the retrieval layer.
+  \item \textbf{Curated and near-distribution protocol benchmarks.} The 15 Tier~0A
+  prompts were written in-distribution with the system prompt; they establish viability,
+  not adversarial robustness. Tier~0B provides stronger evidence but is still curated.
+  \emph{Next step}: construct a benchmark drawn from raw financial news feeds with
+  adversarial phrasings.
 
-  \item \textbf{The 0.375 exact agreement ceiling.} The remaining normalization failures on Tier 0E are interpretable but real. The system is not yet at the level of exact analyst automation on harder document prompts.
+  \item \textbf{Small benchmark sample sizes.} With $n \leq 15$ prompts per tier,
+  group-level pass rates (e.g., 3/4 = 0.75) are estimated from very few data points.
+  \emph{Next step}: scale the benchmark to $\geq 100$ prompts per tier before drawing
+  deployment conclusions.
 
-  \item \textbf{Monotonicity is extrinsic.} The five monotonicity checks pass because of the semantic controller, not because the raw learned model is monotone. This is the principal architectural limitation for production use cases where regime-ordered behavior must be guaranteed by the model itself.
+  \item \textbf{Exact DSL agreement ceiling of 0.375.} The remaining normalization
+  failures on Tier~0E are interpretable but real. \emph{Next step}: add a monotone
+  escalation rule and canonical grid specification to the system prompt; run ablations
+  on Tier~0E to establish the ceiling achievable without fine-tuning.
 
-  \item \textbf{Domain-limited cross-asset advantage.} The hybrid architecture does not universally outperform simpler baselines. Asset-class-specific feature engineering is a prerequisite for making architecture claims in equity derivatives.
+  \item \textbf{Monotonicity is extrinsic.} All five monotonicity checks pass because
+  of the semantic controller, not the raw model. \emph{Next step (a)}: add
+  regime-ordering ranking losses to the training objective — sample pairs $(S,v,t)$
+  under STABLE and STRESS parameter sets and penalize $\max(0,\, V_\text{STABLE} -
+  V_\text{STRESS} + \epsilon)$. \emph{Next step (b)}: selectively replace B-spline
+  edges with MonoKAN-style certified monotone variants \citep{polo_molina_etal_2024_monokan}
+  on the vol-surface path where the controller correction is heaviest.
 
-  \item \textbf{Security analysis is proof-of-concept.} The AST allowlist validator is correct as implemented and blocks all five injection payloads we tested, but it has not been subjected to a formal security review or adversarial red-teaming at scale.
+  \item \textbf{Domain-limited cross-asset advantage.} The hybrid does not universally
+  outperform simpler baselines. \emph{Next step}: for SOXX and XLK, add earnings
+  surprise indicators, export-control event flags, and AI capital expenditure indices
+  as HMM input features, then repeat the cross-asset experiments.
 
-  \item \textbf{No fine-tuned model weights.} The \texttt{LoraDataCollector} infrastructure exists for collecting trajectory data for future LiuClaw fine-tuning via LoRA \citep{hu2021lora}, but no fine-tuned checkpoints have been produced in this evaluation cycle.
+  \item \textbf{Security analysis is proof-of-concept.} The AST allowlist validator
+  blocks all five injection payloads tested but has not been subjected to formal
+  red-teaming. \emph{Next step}: engage a security review against a broader adversarial
+  payload suite; additionally add runtime differentiability probing on a sample grid.
+
+  \item \textbf{No fine-tuned model weights.} The \texttt{LoraDataCollector}
+  infrastructure exists for collecting LiuClaw agent trajectories. \emph{Next step}:
+  once sufficient production trajectory data has been collected, apply LoRA
+  \citep{hu2021lora} fine-tuning to the 7B model (System~1 reflexive task) and the
+  32B model (System~2 strategic task) to reduce latency and close the normalization gap.
+
+  \item \textbf{Retrieval and adversarial defense for the document input path.} Moving
+  from curated excerpts to a live news feed requires a retrieval pipeline and input
+  sanitization separate from the AST execution-side validator. \emph{Next step}:
+  design a document ingestion layer with deduplication and retrieval-level injection
+  defense.
 \end{enumerate}
-
-% =====================================================================
-\section{Future Directions}
-\label{sec:future}
-% =====================================================================
-
-The experimental findings point to a clear prioritized roadmap.
-
-\textbf{(1) Native monotonicity via ranking losses.} The most impactful near-term research direction is enriching the training objective with explicit regime-ordering terms. Concretely: sample pairs $(S, v, t)$ at identical market inputs but under STABLE and STRESS Heston parameters, and add $\max(0, V_\text{STABLE} - V_\text{STRESS} + \epsilon)$ to the loss. If successful, this would make the semantic controller's monotone projection unnecessary, reducing system complexity by a full layer.
-
-\textbf{(2) Selective MonoKAN substitution.} For the volatility surface path — where the current controller correction is heaviest — selective replacement of B-spline edges with MonoKAN-style certified monotone variants \citep{polo_molina_etal_2024_monokan} provides an architecturally principled route to native ordering. The key research question is whether certified monotone edges can still be replaced by the topology agent, or whether they require a new class of symbolic edge.
-
-\textbf{(3) Tighter normalization contracts.} Adding monotone escalation rules and canonical grid specifications to the system prompt should close the 0.375 $\to$ 0.75 exact agreement gap. Ablations on Tier 0E with progressively tighter system prompts would establish the ceiling achievable without fine-tuning.
-
-\textbf{(4) Multi-date historical validation.} This is the most critical next evidence step for production credibility. Obtaining multi-date historical OPRA tapes (or using the public CBOE historical options dataset) and repeating the replay benchmark over a rolling 12-month window would replace the current single-date live result with a genuine generalization measurement.
-
-\textbf{(5) LiuClaw fine-tuning via LoRA.} Once sufficient trajectory data has been collected from production runs, supervised fine-tuning of the 7B model on the System~1 reflexive task and the 32B model on the System~2 strategic task \citep{hu2021lora} should reduce both latency and the normalization gap. The LoRA infrastructure is in place; the blocking dependency is trajectory data volume.
-
-\textbf{(6) Asset-specific feature enrichment for equity derivatives.} For SOXX and XLK, the relevant differentiating signals are earnings surprise indicators, export-control event flags, and AI capital expenditure indices. Adding these as HMM input features and repeating the cross-asset experiments would test whether the hybrid architecture's advantage extends to equity derivatives when the feature set is appropriately enriched.
-
-\textbf{(7) Retrieval and adversarial defense for the document input path.} Moving from curated document excerpts to a live news feed requires a retrieval pipeline, deduplication, and input sanitization that is separate from the AST execution-side validator. The execution side is protected; the retrieval side is not yet addressed.
 
 % =====================================================================
 \section{Conclusion}
 \label{sec:conclusion}
 % =====================================================================
 
-We have described OpKAN, an architecture that decomposes the options pricing problem into three layers — a physics-informed KAN for quantitative discipline, a Hidden Markov regime detector for temporal stability, and a dual-process topology management agent for narrative-responsive structural adaptation — and shown that these layers can be made simultaneously operative, secure, and quantitatively credible on preliminary benchmarks.
+We have described OpKAN, an architecture that decomposes the options pricing problem
+into three decoupled layers — a physics-informed KAN for quantitative discipline, a
+Hidden Markov regime detector for temporal stability, and a dual-process topology
+management agent for narrative-responsive structural adaptation — and shown that these
+layers can be made simultaneously operative, secure, and quantitatively credible on
+preliminary benchmarks.
 
-The evidence is exploratory. What it establishes: the semantic compiler interface is viable on curated inputs; explicit regime control produces coherent backend behavior when the raw learned model does not; the IV-residual hybrid architecture is most effective in the transition and stress regimes where regime-sensitive correction matters; and the asynchronous LLM integration maintains full GPU throughput with zero blocking.
+The evidence is exploratory. What it establishes: the semantic compiler interface is
+viable on document-grounded inputs; explicit regime control produces coherent backend
+behavior when the raw learned model does not; the IV-residual hybrid is most effective
+in the transition and stress regimes where regime-sensitive correction matters; and the
+asynchronous LLM integration maintains full GPU throughput with zero blocking.
 
-What it does not yet establish: intrinsic monotonicity from the learned model, robustness to adversarial documents, full human-analyst-level normalization, and a generalization result over multiple historical dates.
+What it does not establish: intrinsic monotonicity from the learned model, robustness
+to adversarial documents, full human-analyst-level normalization, and a generalization
+result over multiple historical dates. These are not merely items for a future-work
+list; they are the specific measurements needed before the architecture claims can be
+strengthened.
 
-The architecture's theoretical contribution is the identification of the right abstraction boundary between its three layers: natural language understanding in the LLM, mathematical constraint satisfaction in the physics-informed model, and auditability in the typed DSL. Each layer does one thing, does it well, and does not ask the other layers to compensate for what it cannot do. Constructing that boundary cleanly — and enforcing it with type systems, schema validation, and AST security analysis — is the design work that makes OpKAN a research platform rather than a monolithic black box. The next phase of development is making each layer individually better: the learned model through richer training objectives, the agent through domain-specific fine-tuning, and the control architecture through native monotone embedding. The boundaries remain the same; the capabilities within them deepen.
+The architecture's theoretical contribution is the identification of the right
+abstraction boundary: natural language understanding in the LLM, mathematical constraint
+satisfaction in the physics-informed model, and auditability in the typed DSL. Each
+layer does one thing, does it well, and does not ask the other layers to compensate for
+what it cannot do. The next phase of development is making each layer individually
+better within those boundaries — the learned model through richer training objectives,
+the agent through domain-specific fine-tuning, and the control architecture through
+native monotone embedding. The boundaries remain the same; the capabilities within them
+deepen.
 
 % =====================================================================
 \bibliographystyle{plainnat}

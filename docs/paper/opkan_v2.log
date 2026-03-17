@@ -1,9 +1,9 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.2.10)  17 MAR 2026 15:15
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.2.10)  17 MAR 2026 17:39
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
-**architectural_deep_dive.tex
-(./architectural_deep_dive.tex
+**opkan_v2.tex
+(./opkan_v2.tex
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
 (/home/wliu23/.TinyTeX/texmf-dist/tex/latex/base/article.cls
@@ -375,44 +375,54 @@ Package: array 2025/09/25 v2.6n Tabular extension package (FMi)
 \extratabsurround=\skip65
 \backup@length=\skip66
 \ar@cellbox=\box60
+) (/home/wliu23/.TinyTeX/texmf-dist/tex/latex/enumitem/enumitem.sty
+Package: enumitem 2025/02/06 v3.11 Customized lists
+\labelindent=\skip67
+\enit@outerparindent=\dimen192
+\enit@toks=\toks37
+\enit@inbox=\box61
+\enit@count@id=\count333
+\enitdp@description=\count334
+) (/home/wliu23/.TinyTeX/texmf-dist/tex/latex/parskip/parskip.sty
+Package: parskip 2021-03-14 v2.0h non-zero parskip adjustments
 )
-\c@definition=\count333
-\c@proposition=\count334
-\c@remark=\count335
+\c@definition=\count335
+\c@proposition=\count336
+\c@remark=\count337
  (/home/wliu23/.TinyTeX/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
-\l__color_backend_stack_int=\count336
-) (./architectural_deep_dive.aux)
-\openout1 = `architectural_deep_dive.aux'.
+\l__color_backend_stack_int=\count338
+) (./opkan_v2.aux)
+\openout1 = `opkan_v2.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 41.
-LaTeX Font Info:    ... okay on input line 41.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 41.
-LaTeX Font Info:    ... okay on input line 41.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 41.
-LaTeX Font Info:    ... okay on input line 41.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 41.
-LaTeX Font Info:    ... okay on input line 41.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 41.
-LaTeX Font Info:    ... okay on input line 41.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 41.
-LaTeX Font Info:    ... okay on input line 41.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 41.
-LaTeX Font Info:    ... okay on input line 41.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 41.
-LaTeX Font Info:    ... okay on input line 41.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 41.
-LaTeX Font Info:    ... okay on input line 41.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 45.
+LaTeX Font Info:    ... okay on input line 45.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 45.
+LaTeX Font Info:    ... okay on input line 45.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 45.
+LaTeX Font Info:    ... okay on input line 45.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 45.
+LaTeX Font Info:    ... okay on input line 45.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 45.
+LaTeX Font Info:    ... okay on input line 45.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 45.
+LaTeX Font Info:    ... okay on input line 45.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 45.
+LaTeX Font Info:    ... okay on input line 45.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 45.
+LaTeX Font Info:    ... okay on input line 45.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 45.
+LaTeX Font Info:    ... okay on input line 45.
  (/home/wliu23/.TinyTeX/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
 Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
  (/home/wliu23/.TinyTeX/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 ))
-Package hyperref Info: Link coloring OFF on input line 41.
- (./architectural_deep_dive.out) (./architectural_deep_dive.out)
+Package hyperref Info: Link coloring OFF on input line 45.
+ (./opkan_v2.out) (./opkan_v2.out)
 \@outlinefile=\write3
-\openout3 = `architectural_deep_dive.out'.
+\openout3 = `opkan_v2.out'.
 
 
 *geometry* driver: auto-detecting
@@ -449,155 +459,165 @@ Package hyperref Info: Link coloring OFF on input line 41.
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-\c@lstlisting=\count337
-LaTeX Font Info:    Trying to load font information for U+msa on input line 44.
+\c@lstlisting=\count339
+Couldn't patch \deferred@thm@head!
+LaTeX Font Info:    Trying to load font information for U+msa on input line 47.
 (/home/wliu23/.TinyTeX/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 44.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 47.
  (/home/wliu23/.TinyTeX/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
-) (./architectural_deep_dive.toc [1
+) (./opkan_v2.toc [1
 
 {/home/wliu23/.TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map}] [2])
 \tf@toc=\write4
-\openout4 = `architectural_deep_dive.toc'.
+\openout4 = `opkan_v2.toc'.
 
- [3] [4] [5] [6] [7]
-Overfull \hbox (18.53174pt too wide) in paragraph at lines 199--200
-[]\T1/cmr/m/n/10.95 where $\OMS/cmsy/m/n/10.95 N\OT1/cmr/m/n/10.95 [\OML/cmm/m/it/10.95 V\OT1/cmr/m/n/10.95 ]$ \T1/cmr/m/n/10.95 de-notes the He-s-ton dif-fer-en-tial op-er-a-tor eval-u-ated term-by-term via \T1/cmtt/m/n/10.95 torch.autograd
- []
+ [3] [4] [5]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 126.
 
 
-LaTeX Warning: `h' float specifier changed to `ht'.
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `superscript' on input line 126.
 
-[8] (/home/wliu23/.TinyTeX/texmf-dist/tex/latex/listings/lstlang1.sty
-File: lstlang1.sty 2025/11/14 1.11b listings language file
-)
-LaTeX Font Info:    Font shape `T1/cmtt/bx/n' in size <10> not available
-(Font)              Font shape `T1/cmtt/m/n' tried instead on input line 269.
- [9
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 126.
+
+[6] [7
 pdfTeX warning (ext4): destination with the same identifier (name{figure.1}) has been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.280 
-      ] [10]
-Overfull \hbox (7.0026pt too wide) in paragraph at lines 328--329
-\T1/cmr/m/n/10.95 We con-firmed that this is triv-ially ex-ploitable. The ex-pres-sion \T1/cmtt/m/n/10.95 '__import__("os").system("echo
+l.214 \end{equation}
+                    ] [8]
+Overfull \hbox (1.53174pt too wide) in paragraph at lines 252--254
+\T1/cmr/m/n/10.95 where $\OMS/cmsy/m/n/10.95 N\OT1/cmr/m/n/10.95 [\OML/cmm/m/it/10.95 V\OT1/cmr/m/n/10.95 ]$ \T1/cmr/m/n/10.95 de-notes the He-s-ton dif-fer-en-tial op-er-a-tor eval-u-ated term-by-term via \T1/cmtt/m/n/10.95 torch.autograd
  []
 
+[9]
+Overfull \hbox (3.47263pt too wide) in paragraph at lines 297--298
+\T1/cmr/m/n/10.95 The agent op-er-ates on two timescales, mo-ti-vated by the qual-i-ta-tively dif-fer-ent tasks each timescale
+ []
 
-Overfull \hbox (30.76999pt too wide) in paragraph at lines 364--365
-[]\T1/cmr/m/n/10.95 The val-ida-tor blocks: \T1/cmtt/m/n/10.95 __import__\T1/cmr/m/n/10.95 , \T1/cmtt/m/n/10.95 eval\T1/cmr/m/n/10.95 , \T1/cmtt/m/n/10.95 open\T1/cmr/m/n/10.95 , \T1/cmtt/m/n/10.95 lambda\T1/cmr/m/n/10.95 , at-tribute chains like \T1/cmtt/m/n/10.95 __class__.__bases__\T1/cmr/m/n/10.95 ,
+(/home/wliu23/.TinyTeX/texmf-dist/tex/latex/listings/lstlang1.sty
+File: lstlang1.sty 2025/11/14 1.11b listings language file
+)
+LaTeX Font Info:    Font shape `T1/cmtt/bx/n' in size <10> not available
+(Font)              Font shape `T1/cmtt/m/n' tried instead on input line 304.
+ [10]
+Overfull \hbox (8.67622pt too wide) in paragraph at lines 354--355
+[]\T1/cmr/m/n/10.95 At the start of each train-ing batch, the loop calls \T1/cmtt/m/n/10.95 apply_pending_mutations(model, optimizer)\T1/cmr/m/n/10.95 ,
  []
 
 [11]
-Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on input line 387.
- [12]
-Overfull \hbox (11.72198pt too wide) in paragraph at lines 432--433
-[]\T1/cmr/m/n/10.95 Does the agent agree with human-authored gold DSL on harder document-grounded prompts? 
+Overfull \hbox (54.15196pt too wide) in paragraph at lines 369--370
+\T1/cmr/m/n/10.95 We con-firmed that this is triv-ially ex-ploitable. A for-mula string con-tain-ing \T1/cmtt/m/n/10.95 '__import__("os").system("rm
  []
 
-[13]
+[12]
+Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on input line 432.
+ [13] [14]
+Overfull \hbox (0.2024pt too wide) in paragraph at lines 501--502
+\T1/cmr/m/n/10.95 duces the low-est price MAE in each regime? And is the ad-van-tage of the regime-conditioned
+ []
 
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 478.
+[15] [16
+pdfTeX warning (ext4): destination with the same identifier (name{table.1}) has been already used, duplicate ignored
+<argument> ...shipout:D \box_use:N \l_shipout_box 
+                                                  \__shipout_drop_firstpage_...
+l.561 
+      ]
+Overfull \hbox (9.06902pt too wide) in paragraph at lines 566--567
+[]\T1/cmr/m/n/10.95 Fluid-dynamics ex-cerpt $\OMS/cmsy/m/n/10.95 !$ \T1/cmtt/m/n/10.95 OUTLOOK asset=silver horizon=10d backdrop=STRESS \T1/cmr/m/n/10.95 (shock-
+ []
 
 
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\to' on input line 478.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 478.
-
-
-Overfull \hbox (7.49365pt too wide) in paragraph at lines 500--501
+Overfull \hbox (7.49365pt too wide) in paragraph at lines 567--568
 []\T1/cmr/m/n/10.95 COMEX in-ven-tory note $\OMS/cmsy/m/n/10.95 !$ \T1/cmtt/m/n/10.95 QUOTE call spot=31 strike=32 expiry=45d vol=kan_regime
  []
 
 
-Overfull \hbox (35.17227pt too wide) in paragraph at lines 501--502
+Overfull \hbox (35.17227pt too wide) in paragraph at lines 568--569
 []\T1/cmr/m/n/10.95 Regime-shift chal-lenge $\OMS/cmsy/m/n/10.95 !$ \T1/cmtt/m/n/10.95 SURFACE vol asset=silver regime=STRESS strikes=[0.9,1.0,1.1]
  []
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-[14
-pdfTeX warning (ext4): destination with the same identifier (name{table.1}) has been already used, duplicate ignored
-<argument> ...shipout:D \box_use:N \l_shipout_box 
-                                                  \__shipout_drop_firstpage_...
-l.526 \subsection
-                 {Document-to-Gold Agreement}]
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-[15
+[17
 pdfTeX warning (ext4): destination with the same identifier (name{table.2}) has been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.581 \end{table}
-                 
-pdfTeX warning (ext4): destination with the same identifier (name{table.3}) has been already used, duplicate ignored
-<argument> ...shipout:D \box_use:N \l_shipout_box 
-                                                  \__shipout_drop_firstpage_...
-l.581 \end{table}
-                 ]
+l.615 
+      ]
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-[16
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[18
+pdfTeX warning (ext4): destination with the same identifier (name{table.3}) has been already used, duplicate ignored
+<argument> ...shipout:D \box_use:N \l_shipout_box 
+                                                  \__shipout_drop_firstpage_...
+l.673 
+      
 pdfTeX warning (ext4): destination with the same identifier (name{table.4}) has been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.622   \item \textbf
-                     {Training throughput:} 26,300 samples/sec (5 epochs, 1M...
+l.673 
+      ]
+Overfull \hbox (12.84993pt too wide) in paragraph at lines 677--688
+ [][] 
+ []
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[19
 pdfTeX warning (ext4): destination with the same identifier (name{table.5}) has been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.622   \item \textbf
-                     {Training throughput:} 26,300 samples/sec (5 epochs, 1M...
+l.716 
+      
 pdfTeX warning (ext4): destination with the same identifier (name{table.6}) has been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.622   \item \textbf
-                     {Training throughput:} 26,300 samples/sec (5 epochs, 1M...] [17
+l.716 
+      
 pdfTeX warning (ext4): destination with the same identifier (name{table.7}) has been already used, duplicate ignored
 <argument> ...shipout:D \box_use:N \l_shipout_box 
                                                   \__shipout_drop_firstpage_...
-l.653 
-      ]
-Overfull \hbox (7.51408pt too wide) in paragraph at lines 668--669
-[]\T1/cmr/bx/n/10.95 Exact human-analyst-level nor-mal-iza-tion. \T1/cmr/m/n/10.95 The 0.375 ex-act DSL agree-ment on document-
- []
-
-[18]
-Overfull \hbox (2.13786pt too wide) in paragraph at lines 703--704
-[]\T1/cmr/bx/n/10.95 LoRA fine-tuning in-fras-truc-ture ex-ists but has not pro-duced fine-tuned weights.
- []
-
-[19] [20] (./architectural_deep_dive.bbl [21]) [22] (./architectural_deep_dive.aux)
+l.716 
+      ] [20
+pdfTeX warning (ext4): destination with the same identifier (name{table.8}) has been already used, duplicate ignored
+<argument> ...shipout:D \box_use:N \l_shipout_box 
+                                                  \__shipout_drop_firstpage_...
+l.739 
+      ] [21] [22] (./opkan_v2.bbl [23]) [24] (./opkan_v2.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
-Package rerunfilecheck Info: File `architectural_deep_dive.out' has not changed.
-(rerunfilecheck)             Checksum: CC64613B2E71758C26C6B6AF958D37C4;10442.
+Package rerunfilecheck Info: File `opkan_v2.out' has not changed.
+(rerunfilecheck)             Checksum: 491D015A4F3EAFBBFBFB37A6D5B3E0EB;11075.
  ) 
 Here is how much of TeX's memory you used:
- 14206 strings out of 469514
- 210067 string characters out of 5469758
- 1071348 words of memory out of 5000000
- 42448 multiletter control sequences out of 15000+600000
- 656359 words of font info for 116 fonts, out of 8000000 for 9000
+ 14546 strings out of 469514
+ 215742 string characters out of 5469758
+ 1093430 words of memory out of 5000000
+ 42792 multiletter control sequences out of 15000+600000
+ 658579 words of font info for 119 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 75i,12n,79p,1668b,1335s stack positions out of 10000i,1000n,20000p,200000b,200000s
- </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0900.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecit1095.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1095.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0600.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0800.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt1095.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1200.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecti1095.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1095.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1095.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1440.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt1000.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1000.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1000.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt1200.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1200.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1728.600pk></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmib10.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cmextra/cmmib8.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
-Output written on architectural_deep_dive.pdf (22 pages, 421914 bytes).
+ 75i,12n,79p,1221b,1330s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0900.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecit1095.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt1000.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0600.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt1095.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0700.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0800.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1095.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecti1095.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1200.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1095.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1095.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1440.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecti1000.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1000.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1000.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt1200.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1200.600pk> </home/wliu23/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1728.600pk></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmib10.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cmextra/cmmib8.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb></home/wliu23/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
+Output written on opkan_v2.pdf (24 pages, 445320 bytes).
 PDF statistics:
- 1454 PDF objects out of 1728 (max. 8388607)
- 698 compressed objects within 7 object streams
- 200 named destinations out of 1000 (max. 500000)
- 449 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 1470 PDF objects out of 1728 (max. 8388607)
+ 684 compressed objects within 7 object streams
+ 186 named destinations out of 1000 (max. 500000)
+ 433 words of extra memory for PDF output out of 10000 (max. 10000000)
 

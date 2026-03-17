@@ -1,33 +1,20 @@
 import random
 import time
 import json
+import os
 from datetime import datetime
 from typing import List, Optional, Literal
 
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical, Grid
-from textual.widgets import Header, Footer, Static, RichLog, Label, Button
+from textual.widgets import Header, Footer, Static, RichLog, Label
 from textual.reactive import reactive
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 from rich.markdown import Markdown
 from textual_plotext import PlotextPlot
-from pydantic import BaseModel, Field
-
-# ---------------------------------------------------------------------------
-# Models for Scenario Generation
-# ---------------------------------------------------------------------------
-
-class ScenarioStep(BaseModel):
-    regime: str = Field(..., description="Target regime name")
-    loss_trend: Literal["UP", "DOWN", "FLAT"] = Field(..., description="Direction of PDE loss")
-    price_trend: Literal["UP", "DOWN", "FLAT"] = Field(..., description="Direction of Option Price")
-    agent_reasoning: str = Field(..., description="Narrative reasoning from the agent")
-
-class ScenarioPlan(BaseModel):
-    name: str
-    steps: List[ScenarioStep]
+from src.engine.telemetry import telemetry
 
 # ---------------------------------------------------------------------------
 # TUI Components
@@ -70,7 +57,7 @@ class BrainStatus(Static):
         return Panel(table, title="Neural Engine", border_style="blue")
 
 class OpKANDashboard(App):
-    """The main OpKAN Terminal Telemetry App."""
+    """The main OpKAN Terminal Telemetry App (100% Real-time)."""
     
     CSS = """
     Screen {
@@ -111,24 +98,22 @@ class OpKANDashboard(App):
     }
     #brain-panel {
         height: 7;
-        margin-bottom: 1;
+        margin-top: 1;
     }
     """
     
     BINDINGS = [
         ("q", "quit", "Quit"),
-        ("d", "toggle_dual", "Toggle Dual Brain"),
-        ("s", "new_scenario", "New Scenario"),
         ("b", "toggle_sidebar", "Toggle Sidebar"),
     ]
 
     throughput = reactive(0)
-    pde_loss = reactive(1.0)
-    option_price = reactive(10.0)
-    delta = reactive(0.5)
-    gamma = reactive(0.02)
-    vega = reactive(0.1)
-    regime = reactive("INITIALIZING")
+    pde_loss = reactive(0.0)
+    option_price = reactive(0.0)
+    delta = reactive(0.0)
+    gamma = reactive(0.0)
+    vega = reactive(0.0)
+    regime = reactive("WAITING")
     dual_mode = reactive(True)
 
     def compose(self) -> ComposeResult:
@@ -162,23 +147,15 @@ class OpKANDashboard(App):
             "loss": [], "price": [], "tput": [],
             "delta": [], "gamma": [], "vega": []
         }
-        self.step_count = 0
-        self.current_plan: Optional[ScenarioPlan] = None
-        self.current_step_idx = 0
-        
+        self.last_log_idx = 0
         self.init_plots()
-        self.query_one("#agent-log").write("[bold green]System Initialized. H200 GPU Online.[/]")
-        self.action_new_scenario()
-        self.set_interval(0.5, self.update_data)
+        self.set_interval(0.2, self.poll_telemetry)
 
     def init_plots(self):
         theme = "dark"
         for pid in ["#loss-plot", "#price-plot", "#greeks-plot", "#tput-plot"]:
             plt = self.query_one(pid).plt
             plt.theme(theme)
-            # High-res braille markers
-            # Note: marker="braille" might not be supported by all terminals, 
-            # but it is the "pixel" equivalent in TUI.
             
         self.query_one("#loss-plot").plt.title("Heston PDE Residual")
         self.query_one("#price-plot").plt.title("Option Price Trend")
@@ -186,59 +163,23 @@ class OpKANDashboard(App):
         self.query_one("#tput-plot").plt.title("Pricing Throughput")
 
     def action_toggle_sidebar(self):
-        sidebar = self.query_one("#sidebar")
-        sidebar.toggle_class("hidden")
+        self.query_one("#sidebar").toggle_class("hidden")
 
-    def action_toggle_dual(self):
-        self.dual_mode = not self.dual_mode
-        self.query_one("#brain-panel").dual_mode = self.dual_mode
-        status = "ENABLED" if self.dual_mode else "DISABLED"
-        self.query_one("#agent-log").write(f"[bold magenta]Brain Overwrite: Dual-Process Engine {status}.[/]")
+    def poll_telemetry(self) -> None:
+        """Polls the real telemetry store for 100% live data."""
+        data = telemetry.read()
+        if not data: return
 
-    def action_new_scenario(self):
-        names = ["FOMC Hawk Pivot", "Geopolitical Supply Shock", "Earnings Momentum Run", "Flash Crash"]
-        regimes = ["STABLE", "EXPANSION", "CRASH", "JUMP_DIFFUSION"]
+        # 1. Update Metrics
+        self.throughput = data.get("throughput", 0)
+        self.pde_loss = data.get("pde_loss", 0.0)
+        self.option_price = data.get("option_price", 0.0)
+        self.regime = data.get("regime", "UNKNOWN")
+        self.delta = data.get("delta", 0.0)
+        self.gamma = data.get("gamma", 0.0)
+        self.vega = data.get("vega", 0.0)
         
-        new_steps = []
-        for _ in range(5):
-            new_steps.append(ScenarioStep(
-                regime=random.choice(regimes),
-                loss_trend=random.choice(["UP", "DOWN", "FLAT"]),
-                price_trend=random.choice(["UP", "DOWN", "FLAT"]),
-                agent_reasoning=f"LLM: {random.choice(['Skew steepening', 'Gamma exposure rising', 'Volatility clustering detected'])}."
-            ))
-        
-        self.current_plan = ScenarioPlan(name=random.choice(names), steps=new_steps)
-        self.current_step_idx = 0
-        self.query_one("#agent-log").write(f"[bold cyan]vLLM Scenario Active:[/] {self.current_plan.name}")
-
-    def update_data(self) -> None:
-        self.step_count += 1
-        
-        if self.current_plan:
-            step = self.current_plan.steps[self.current_step_idx]
-            self.regime = step.regime
-            
-            # Simulated Math Logic
-            if step.loss_trend == "UP": self.pde_loss *= (1.05 + random.random()*0.05)
-            elif step.loss_trend == "DOWN": self.pde_loss = max(self.pde_loss * (0.95 if self.dual_mode else 0.98), 0.0001)
-            
-            if step.price_trend == "UP": self.option_price += random.random() * 0.5
-            elif step.price_trend == "DOWN": self.option_price = max(self.option_price - random.random() * 0.5, 1.0)
-            
-            # Simulated Greeks
-            self.delta = 0.5 + 0.2 * (random.random() - 0.5) if self.regime == "STABLE" else 0.5 + 0.4 * (random.random() - 0.5)
-            self.vega = 0.1 + 0.05 * random.random() if self.regime == "STABLE" else 0.2 + 0.1 * random.random()
-            self.gamma = 0.02 + 0.01 * random.random()
-
-            if self.step_count % 10 == 0:
-                self.current_step_idx = (self.current_step_idx + 1) % len(self.current_plan.steps)
-                self.query_one("#agent-log").write(f"[dim italic]Regime Update:[/] {step.agent_reasoning}")
-        
-        self.throughput = 26300 + random.randint(-200, 200)
-        self.pde_loss = max(min(self.pde_loss, 50.0), 0.0001)
-        
-        # Update Histories
+        # 2. Update Histories for Plots
         self.history["loss"].append(self.pde_loss)
         self.history["price"].append(self.option_price)
         self.history["tput"].append(self.throughput)
@@ -248,7 +189,7 @@ class OpKANDashboard(App):
         for k in self.history:
             if len(self.history[k]) > 100: self.history[k].pop(0)
             
-        # Update UI Cards
+        # 3. Update UI Cards
         self.query_one("#card-tput").value = f"{self.throughput:,}"
         self.query_one("#card-loss").value = f"{self.pde_loss:.6f}"
         self.query_one("#card-price").value = f"{self.option_price:.2f}"
@@ -257,16 +198,24 @@ class OpKANDashboard(App):
         self.query_one("#card-gamma").value = f"{self.gamma:.4f}"
         self.query_one("#card-vega").value = f"{self.vega:.4f}"
         
-        self.refresh_plots()
-        self.simulate_brain()
-
-    def simulate_brain(self):
-        if not self.dual_mode: return
+        # 4. Update Brain Panel
         brain = self.query_one("#brain-panel")
-        brain.s1_active = (self.step_count % 8 == 0)
-        brain.s2_active = (self.step_count % 25 == 0)
-        if brain.s1_active: self.query_one("#agent-log").write(f"[dim]System 1:[/] Reflexive pruning completed.")
-        if brain.s2_active: self.query_one("#agent-log").write(f"[bold cyan]System 2:[/] Strategic review: {self.regime} optimized.")
+        brain.s1_active = data.get("s1_active", False)
+        brain.s2_active = data.get("s2_active", False)
+        brain.dual_mode = data.get("dual_mode", True)
+
+        # 5. Handle New Logs
+        logs = data.get("logs", [])
+        if len(logs) > self.last_log_idx:
+            new_entries = logs[self.last_log_idx:]
+            for entry in new_entries:
+                self.query_one("#agent-log").write(f"[dim]{entry['timestamp']}[/] {entry['message']}")
+            self.last_log_idx = len(logs)
+        elif len(logs) < self.last_log_idx:
+            # Store was reset
+            self.last_log_idx = 0
+
+        self.refresh_plots()
 
     def refresh_plots(self):
         # Loss Plot
@@ -284,8 +233,10 @@ class OpKANDashboard(App):
         # Greeks Plot (Multi-line)
         gp = self.query_one("#greeks-plot")
         gp.plt.clear_data()
-        gp.plt.plot(self.history["delta"], color="cyan", label="Delta")
-        gp.plt.plot(self.history["vega"], color="magenta", label="Vega")
+        if self.history["delta"]:
+            gp.plt.plot(self.history["delta"], color="cyan", label="Delta")
+        if self.history["vega"]:
+            gp.plt.plot(self.history["vega"], color="magenta", label="Vega")
         gp.refresh()
         
         # Throughput

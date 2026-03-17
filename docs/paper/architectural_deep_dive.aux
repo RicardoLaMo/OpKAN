@@ -2,41 +2,145 @@
 \providecommand\hyper@newdestlabel[2]{}
 \providecommand\HyField@AuxAddToFields[1]{}
 \providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{kahneman2011thinking}
 \citation{black_scholes_1973}
 \citation{merton_1973}
+\citation{heston1993closed}
 \citation{hutchinson_lo_poggio_1994}
+\citation{raissi2019physics}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{4}{section.1}\protected@file@percent }
+\newlabel{sec:intro}{{1}{4}{Introduction}{section.1}{}}
+\citation{black_scholes_1973,merton_1973}
+\citation{heston1993closed}
+\citation{wilmott1993option}
+\citation{raissi2019physics}
+\citation{horvath2021deep}
+\citation{kolmogorov1957representation}
 \citation{liu_etal_2024_kan}
+\citation{polo_molina_etal_2024_monokan}
+\citation{hutchinson_lo_poggio_1994}
+\citation{hernandez2016model}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related Work}{5}{section.2}\protected@file@percent }
+\newlabel{sec:related}{{2}{5}{Related Work}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Classical Option Pricing and Stochastic Volatility}{5}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Physics-Informed Neural Networks}{5}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Kolmogorov-Arnold Networks}{5}{subsection.2.3}\protected@file@percent }
 \citation{schick_etal_2023_toolformer}
 \citation{yao_etal_2023_react}
 \citation{you_etal_2017_dln}
 \citation{nguyen_etal_2023_mononet}
+\citation{kahneman2011thinking}
+\citation{hamilton1989new}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Machine Learning for Options and Implied Volatility}{6}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.5}LLM Agents for Quantitative Finance}{6}{subsection.2.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.6}Monotone and Interpretable Learned Models}{6}{subsection.2.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.7}Dual-Process Cognition and AI}{6}{subsection.2.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.8}Hidden Markov Models for Market Regimes}{6}{subsection.2.8}\protected@file@percent }
+\citation{liu_etal_2024_kan}
+\citation{heston1993closed}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Mathematical Foundations}{7}{section.3}\protected@file@percent }
+\newlabel{sec:math}{{3}{7}{Mathematical Foundations}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Kolmogorov-Arnold Representation and B-Splines}{7}{subsection.3.1}\protected@file@percent }
+\newlabel{eq:ka}{{1}{7}{Kolmogorov-Arnold Representation}{equation.1}{}}
+\newlabel{eq:cox_de_boor}{{3}{7}{Kolmogorov-Arnold Representation and B-Splines}{equation.3}{}}
+\newlabel{eq:bspline_edge}{{4}{7}{Kolmogorov-Arnold Representation and B-Splines}{equation.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}The Heston Stochastic Volatility Model}{7}{subsection.3.2}\protected@file@percent }
+\newlabel{eq:heston_pde}{{7}{7}{The Heston Stochastic Volatility Model}{equation.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Boundary Conditions}{7}{subsection.3.3}\protected@file@percent }
+\newlabel{eq:bc_terminal}{{8}{7}{Boundary Conditions}{equation.8}{}}
+\newlabel{eq:bc_zero}{{9}{7}{Boundary Conditions}{equation.9}{}}
+\newlabel{eq:bc_inf}{{10}{7}{Boundary Conditions}{equation.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}PI-KAN Loss Formulation}{8}{subsection.3.4}\protected@file@percent }
+\newlabel{eq:loss}{{11}{8}{PI-KAN Loss Formulation}{equation.11}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}HMM Regime Detection}{8}{subsection.3.5}\protected@file@percent }
+\newlabel{eq:hmm_relabel}{{12}{8}{HMM Regime Detection}{equation.12}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}System Architecture}{8}{section.4}\protected@file@percent }
+\newlabel{sec:arch}{{4}{8}{System Architecture}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Overview}{8}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Data Pipeline and Feature Extraction}{8}{subsection.4.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces OpKAN four-tier architecture. The LLM agent operates asynchronously and never blocks the GPU training loop.}}{9}{figure.1}\protected@file@percent }
+\newlabel{fig:architecture}{{1}{9}{OpKAN four-tier architecture. The LLM agent operates asynchronously and never blocks the GPU training loop}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}PI-KAN Model}{9}{subsection.4.3}\protected@file@percent }
+\newlabel{eq:kan_forward}{{13}{9}{PI-KAN Model}{equation.13}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}LiuClaw: A Dual-Process Agent}{9}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.1}System 1 -- Fast Thinking}{9}{subsubsection.4.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.2}System 2 -- Slow Thinking}{9}{subsubsection.4.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.4.3}Domain-Specific Language}{10}{subsubsection.4.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Asynchronous Coordination}{10}{subsection.4.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Security and Correctness}{11}{section.5}\protected@file@percent }
+\newlabel{sec:security}{{5}{11}{Security and Correctness}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}The eval() Injection Vulnerability}{11}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}AST Allowlist Validator}{11}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}ZeroEdge: Correct PRUNE Semantics}{12}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Atomic Mutation Rollback}{12}{subsection.5.4}\protected@file@percent }
+\@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces Atomic Mutation Application}}{12}{algorithm.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}HMM Label Stability}{12}{subsection.5.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Experimental Design}{13}{section.6}\protected@file@percent }
+\newlabel{sec:experiments}{{6}{13}{Experimental Design}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Research Questions}{13}{subsection.6.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Protocol Benchmark Tiers}{13}{subsection.6.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Pricing Benchmarks}{13}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Model Families Compared}{14}{subsection.6.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.5}Engineering Stress Test}{14}{subsection.6.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Results}{14}{section.7}\protected@file@percent }
+\newlabel{sec:results}{{7}{14}{Results}{section.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}LLM$\to $DSL Protocol Results}{14}{subsection.7.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Protocol benchmark results by context tier.}}{14}{table.1}\protected@file@percent }
+\newlabel{tab:protocol_results}{{1}{14}{Protocol benchmark results by context tier}{table.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Semantic protocol stability benchmark summary (Tier 0C).}}{15}{table.2}\protected@file@percent }
+\newlabel{tab:semantic_stability}{{2}{15}{Semantic protocol stability benchmark summary (Tier 0C)}{table.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Semantic Protocol Stability}{15}{subsection.7.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Document-to-Gold Agreement}{15}{subsection.7.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Document-to-gold agreement benchmark (Tier 0E).}}{15}{table.3}\protected@file@percent }
+\newlabel{tab:gold_agreement}{{3}{15}{Document-to-gold agreement benchmark (Tier 0E)}{table.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.4}Regime-Action Coherence}{15}{subsection.7.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Financial monotonicity checks under explicit DSL regime overrides.}}{16}{table.4}\protected@file@percent }
+\newlabel{tab:regime_coherence}{{4}{16}{Financial monotonicity checks under explicit DSL regime overrides}{table.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.5}Quantitative Pricing Results}{16}{subsection.7.5}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Replay price MAE by regime for selected models. Lower is better.}}{16}{table.5}\protected@file@percent }
+\newlabel{tab:replay_pricing}{{5}{16}{Replay price MAE by regime for selected models. Lower is better}{table.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Live term-surface overall results.}}{16}{table.6}\protected@file@percent }
+\newlabel{tab:live_pricing}{{6}{16}{Live term-surface overall results}{table.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.6}Cross-Asset Transfer}{16}{subsection.7.6}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Cross-asset business-case summary. Each asset uses the same architecture with an asset-specific local state proxy.}}{17}{table.7}\protected@file@percent }
+\newlabel{tab:cross_asset}{{7}{17}{Cross-asset business-case summary. Each asset uses the same architecture with an asset-specific local state proxy}{table.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.7}Engineering Performance}{17}{subsection.7.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {7.7.1}Benchmark: Baseline vs. Dual-Process}{17}{subsubsection.7.7.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Discussion}{17}{section.8}\protected@file@percent }
+\newlabel{sec:discussion}{{8}{17}{Discussion}{section.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}What the Results Support}{17}{subsection.8.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.2}What the Results Do Not Support}{18}{subsection.8.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.3}The Right Comparison Class}{18}{subsection.8.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Limitations}{19}{section.9}\protected@file@percent }
+\newlabel{sec:limitations}{{9}{19}{Limitations}{section.9}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {10}Future Work}{19}{section.10}\protected@file@percent }
+\newlabel{sec:future}{{10}{19}{Future Work}{section.10}{}}
 \citation{polo_molina_etal_2024_monokan}
-\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {2}Literature Review and The Gap}{1}{section.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Tool-Calling vs. reasoning Agents}{1}{subsection.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Interpretable and Monotone Control}{1}{subsection.2.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {3}The Mathematics of Heston PI-KAN}{2}{section.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}The Heston PDE}{2}{subsection.3.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}The Loss Objective}{2}{subsection.3.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4}Architecture: The "Physical Mutator" Advantage}{2}{section.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Why KAN over MLP?}{2}{subsection.4.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}LiuClaw: The Topological Surgeon}{2}{subsection.4.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {5}Experimental Results}{2}{section.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}LLM $\to $ DSL Protocol Reliability}{2}{subsection.5.1}\protected@file@percent }
+\citation{hu2021lora}
+\@writefile{toc}{\contentsline {section}{\numberline {11}Visualization and Telemetry}{20}{section.11}\protected@file@percent }
+\newlabel{sec:telemetry}{{11}{20}{Visualization and Telemetry}{section.11}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {11.1}Terminal User Interface (TUI)}{20}{subsection.11.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {11.2}Streamlit Dashboard}{20}{subsection.11.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {12}Conclusion}{20}{section.12}\protected@file@percent }
+\newlabel{sec:conclusion}{{12}{20}{Conclusion}{section.12}{}}
 \bibstyle{plainnat}
 \bibdata{references}
 \bibcite{black_scholes_1973}{{1}{1973}{{Black and Scholes}}{{}}}
-\bibcite{hutchinson_lo_poggio_1994}{{2}{1994}{{Hutchinson et~al.}}{{Hutchinson, Lo, and Poggio}}}
-\bibcite{liu_etal_2024_kan}{{3}{2024}{{Liu et~al.}}{{Liu, Wang, Vaidya, Ruehle, Halverson, Solja{\v {c}}i{\'{c}}, Hou, and Tegmark}}}
-\bibcite{merton_1973}{{4}{1973}{{Merton}}{{}}}
-\bibcite{nguyen_etal_2023_mononet}{{5}{2023}{{Nguyen et~al.}}{{Nguyen, Moreno, Le-Bel, Lucchi, and Rodriguez~Martinez}}}
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Protocol Benchmark Results (Qwen 2.5 on H200)}}{3}{table.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Regime Monotonicity and Coherence}{3}{subsection.5.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Financial Monotonicity Checks}}{3}{table.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}H200 Performance Benchmarks}{3}{subsection.5.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{3}{section.6}\protected@file@percent }
-\bibcite{polo_molina_etal_2024_monokan}{{6}{2024}{{Polo-Molina et~al.}}{{Polo-Molina, Alfaya, and Portela}}}
-\bibcite{schick_etal_2023_toolformer}{{7}{2023}{{Schick et~al.}}{{Schick, Dwivedi-Yu, Dess{\`e}, Raileanu, Lomeli, Zettlemoyer, Cancedda, and Scialom}}}
-\bibcite{yao_etal_2023_react}{{8}{2023}{{Yao et~al.}}{{Yao, Zhao, Yu, Du, Shafran, Narasimhan, and Cao}}}
-\bibcite{you_etal_2017_dln}{{9}{2017}{{You et~al.}}{{You, Ding, Canini, Pfeifer, and Gupta}}}
-\gdef \@abspage@last{4}
+\bibcite{hamilton1989new}{{2}{1989}{{Hamilton}}{{}}}
+\bibcite{hernandez2016model}{{3}{2016}{{Hernandez}}{{}}}
+\bibcite{heston1993closed}{{4}{1993}{{Heston}}{{}}}
+\bibcite{horvath2021deep}{{5}{2021}{{Horvath et~al.}}{{Horvath, Muguruza, and Tomas}}}
+\bibcite{hu2021lora}{{6}{2021}{{Hu et~al.}}{{Hu, Shen, Wallis, Allen-Zhu, Li, Wang, Wang, and Chen}}}
+\bibcite{hutchinson_lo_poggio_1994}{{7}{1994}{{Hutchinson et~al.}}{{Hutchinson, Lo, and Poggio}}}
+\bibcite{kahneman2011thinking}{{8}{2011}{{Kahneman}}{{}}}
+\bibcite{kolmogorov1957representation}{{9}{1957}{{Kolmogorov}}{{}}}
+\bibcite{liu_etal_2024_kan}{{10}{2024}{{Liu et~al.}}{{Liu, Wang, Vaidya, Ruehle, Halverson, Solja{\v {c}}i{\'{c}}, Hou, and Tegmark}}}
+\bibcite{merton_1973}{{11}{1973}{{Merton}}{{}}}
+\bibcite{nguyen_etal_2023_mononet}{{12}{2023}{{Nguyen et~al.}}{{Nguyen, Moreno, Le-Bel, Lucchi, and Rodriguez~Martinez}}}
+\bibcite{polo_molina_etal_2024_monokan}{{13}{2024}{{Polo-Molina et~al.}}{{Polo-Molina, Alfaya, and Portela}}}
+\bibcite{raissi2019physics}{{14}{2019}{{Raissi et~al.}}{{Raissi, Perdikaris, and Karniadakis}}}
+\bibcite{schick_etal_2023_toolformer}{{15}{2023}{{Schick et~al.}}{{Schick, Dwivedi-Yu, Dess{\`e}, Raileanu, Lomeli, Zettlemoyer, Cancedda, and Scialom}}}
+\bibcite{wilmott1993option}{{16}{1993}{{Wilmott et~al.}}{{Wilmott, Dewynne, and Howison}}}
+\bibcite{yao_etal_2023_react}{{17}{2023}{{Yao et~al.}}{{Yao, Zhao, Yu, Du, Shafran, Narasimhan, and Cao}}}
+\bibcite{you_etal_2017_dln}{{18}{2017}{{You et~al.}}{{You, Ding, Canini, Pfeifer, and Gupta}}}
+\gdef \@abspage@last{22}

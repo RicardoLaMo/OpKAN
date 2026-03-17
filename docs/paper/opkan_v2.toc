@@ -1,0 +1,54 @@
+\contentsline {section}{\numberline {1}Introduction}{4}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Two Problems That Are Almost Always Treated as One}{4}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}The OpKAN Approach}{4}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Contributions}{5}{subsection.1.3}%
+\contentsline {subsection}{\numberline {1.4}Scope and Positioning}{5}{subsection.1.4}%
+\contentsline {subsection}{\numberline {1.5}Paper Organization}{5}{subsection.1.5}%
+\contentsline {section}{\numberline {2}Problem Formulation}{6}{section.2}%
+\contentsline {subsection}{\numberline {2.1}The Heston PDE and the $C^2$ Constraint}{6}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}The Regime Problem: Why a Single Learned Model Is Insufficient}{6}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}The Narrative Problem: Why Structured Models Cannot Self-Update}{6}{subsection.2.3}%
+\contentsline {section}{\numberline {3}Architecture}{7}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Design Philosophy: One Problem per Layer}{7}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Layer 1: The Physics-Informed KAN}{8}{subsection.3.2}%
+\contentsline {subsubsection}{\numberline {3.2.1}Why KAN Over MLP for Heston}{8}{subsubsection.3.2.1}%
+\contentsline {subsubsection}{\numberline {3.2.2}B-Spline Edge Activations}{8}{subsubsection.3.2.2}%
+\contentsline {subsubsection}{\numberline {3.2.3}Model Architecture and Training Objective}{8}{subsubsection.3.2.3}%
+\contentsline {subsection}{\numberline {3.3}Layer 2: Hidden Markov Regime Detector}{9}{subsection.3.3}%
+\contentsline {subsubsection}{\numberline {3.3.1}Why a Separate Regime Layer}{9}{subsubsection.3.3.1}%
+\contentsline {subsubsection}{\numberline {3.3.2}Features and Walk-Forward Inference}{9}{subsubsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.4}Layer 3: The Topology Management Agent}{10}{subsection.3.4}%
+\contentsline {subsubsection}{\numberline {3.4.1}The Core Idea: LLM as Semantic Compiler}{10}{subsubsection.3.4.1}%
+\contentsline {subsubsection}{\numberline {3.4.2}Two-Speed Architecture}{10}{subsubsection.3.4.2}%
+\contentsline {subsubsection}{\numberline {3.4.3}The Domain-Specific Language}{11}{subsubsection.3.4.3}%
+\contentsline {subsection}{\numberline {3.5}End-to-End Coordination}{11}{subsection.3.5}%
+\contentsline {section}{\numberline {4}Correctness and Security}{11}{section.4}%
+\contentsline {subsection}{\numberline {4.1}The Code Injection Problem}{12}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}AST Allowlist Validation}{12}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Correct Pruning Semantics}{13}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Atomic Mutation Rollback}{13}{subsection.4.4}%
+\contentsline {section}{\numberline {5}Related Work}{14}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Physics-Informed Learning for PDEs}{14}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Kolmogorov-Arnold Networks}{14}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}LLM Tool Use and Structured Output}{14}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}Market Regime Detection}{14}{subsection.5.4}%
+\contentsline {subsection}{\numberline {5.5}Dual-Process AI Architectures}{15}{subsection.5.5}%
+\contentsline {section}{\numberline {6}Experimental Investigation}{15}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Research Questions}{15}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Experimental Setup}{15}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Protocol Benchmark Tiers}{16}{subsection.6.3}%
+\contentsline {section}{\numberline {7}Results and Findings}{16}{section.7}%
+\contentsline {subsection}{\numberline {7.1}RQ1 -- Protocol Validity}{16}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}RQ2 -- Paraphrase Stability}{17}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}RQ3 -- Normalization Gap}{17}{subsection.7.3}%
+\contentsline {subsection}{\numberline {7.4}RQ4 -- Regime Coherence}{18}{subsection.7.4}%
+\contentsline {subsection}{\numberline {7.5}RQ5 -- Pricing Performance}{18}{subsection.7.5}%
+\contentsline {subsection}{\numberline {7.6}RQ6 -- Engineering Performance}{19}{subsection.7.6}%
+\contentsline {section}{\numberline {8}Discussion}{20}{section.8}%
+\contentsline {subsection}{\numberline {8.1}What the Architecture Gets Right}{20}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}The Monotonicity Gap: A Design Question, Not a Model Failure}{20}{subsection.8.2}%
+\contentsline {subsection}{\numberline {8.3}The Normalization Gap: A Contract Problem}{21}{subsection.8.3}%
+\contentsline {subsection}{\numberline {8.4}Cross-Asset Transfer: What Domain Specificity Means}{21}{subsection.8.4}%
+\contentsline {section}{\numberline {9}Limitations}{21}{section.9}%
+\contentsline {section}{\numberline {10}Future Directions}{22}{section.10}%
+\contentsline {section}{\numberline {11}Conclusion}{23}{section.11}%
