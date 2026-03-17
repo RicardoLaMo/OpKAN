@@ -67,6 +67,12 @@ def run_experiment(mode: str, data_path: str, epochs: int = 2):
                     coordinator.request_reflex(total_steps, {}, 0.0)
                 if total_steps % 200 == 0:
                     coordinator.request_strategic({}, {}, {})
+            elif mode == "single":
+                # Single loop logic
+                if total_steps % 100 == 0:
+                    # simulate original single-call logic
+                    decision = agent.think_slow({}, {}, {})
+                    # apply immediately
             
     if mode != "baseline": coordinator.stop_threads()
     

@@ -1,3 +1,4 @@
+import copy
 import threading
 import time
 import queue
@@ -72,19 +73,38 @@ class EngineCoordinator:
                     return "HALT"
 
                 print(f"Applying mutations from agent. Reasoning: {decision.reasoning}")
-                
-                for mutation in decision.mutations:
-                    status = TopologicalMutator.mutate_edge(
-                        model, 
-                        mutation.edge_id, 
-                        mutation.action, 
-                        mutation.formula,
-                        mutation.initial_params
-                    )
-                    print(f"Mutation status: {status}")
-                
+
+                if decision.mutations:
+                    # Snapshot affected edge modules for rollback
+                    edge_snapshots = {}
+                    for mutation in decision.mutations:
+                        try:
+                            layer_idx, in_idx, out_idx = TopologicalMutator.parse_edge_id(mutation.edge_id)
+                            if layer_idx < len(model.layers):
+                                key = (layer_idx, in_idx, out_idx)
+                                edge_snapshots[key] = copy.deepcopy(
+                                    model.layers[layer_idx].edges[in_idx][out_idx]
+                                )
+                        except (ValueError, AttributeError):
+                            pass
+                    try:
+                        for mutation in decision.mutations:
+                            status = TopologicalMutator.mutate_edge(
+                                model,
+                                mutation.edge_id,
+                                mutation.action,
+                                mutation.formula,
+                                mutation.initial_params
+                            )
+                            print(f"Mutation status: {status}")
+                    except Exception as e:
+                        print(f"Mutation failed: {e}. Rolling back {len(edge_snapshots)} edge(s).")
+                        for (layer_idx, in_idx, out_idx), saved_module in edge_snapshots.items():
+                            model.layers[layer_idx].edges[in_idx][out_idx] = saved_module
+                        print("Rollback complete.")
+
                 if decision.regime_analysis.hmm_transition_detected:
-                    print(f"🚨 Regime Shift Detected: {decision.regime_analysis.predicted_regime}!")
+                    print(f"Regime Shift Detected: {decision.regime_analysis.predicted_regime}!")
                     print(f"Thesis: {decision.regime_analysis.thesis_statement}")
 
                 decision_queue.task_done()
