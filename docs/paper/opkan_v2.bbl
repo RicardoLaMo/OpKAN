@@ -1,4 +1,4 @@
-\begin{thebibliography}{15}
+\begin{thebibliography}{19}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -9,6 +9,11 @@
 Fischer Black and Myron Scholes.
 \newblock The pricing of options and corporate liabilities.
 \newblock \emph{Journal of Political Economy}, 81\penalty0 (3):\penalty0 637--654, 1973.
+
+\bibitem[B{\"u}hler et~al.(2019)B{\"u}hler, Gonon, Teichmann, and Wood]{buhler2019deep}
+Hans B{\"u}hler, Lukas Gonon, Josef Teichmann, and Ben Wood.
+\newblock Deep hedging.
+\newblock \emph{Quantitative Finance}, 19\penalty0 (8):\penalty0 1271--1291, 2019.
 
 \bibitem[Hamilton(1989)]{hamilton1989new}
 James~D Hamilton.
@@ -30,6 +35,11 @@ Edward~J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wa
 \newblock {LoRA}: Low-rank adaptation of large language models.
 \newblock \emph{arXiv preprint arXiv:2106.09685}, 2021.
 
+\bibitem[Huang et~al.(2023)Huang, Wang, and Yang]{huang2023finbert}
+Allen~H Huang, Hui Wang, and Yi~Yang.
+\newblock {FinBERT}: A large language model for extracting information from financial text.
+\newblock \emph{Contemporary Accounting Research}, 40\penalty0 (2):\penalty0 806--841, 2023.
+
 \bibitem[Hutchinson et~al.(1994)Hutchinson, Lo, and Poggio]{hutchinson_lo_poggio_1994}
 James~M Hutchinson, Andrew~W Lo, and Tomaso Poggio.
 \newblock A nonparametric approach to pricing and hedging derivative securities via learning networks.
@@ -39,6 +49,11 @@ James~M Hutchinson, Andrew~W Lo, and Tomaso Poggio.
 Daniel Kahneman.
 \newblock \emph{Thinking, Fast and Slow}.
 \newblock Farrar, Straus and Giroux, 2011.
+
+\bibitem[Kidger et~al.(2021)Kidger, Foster, Li, and Lyons]{kidger2021neural}
+Patrick Kidger, James Foster, Xuechen Li, and Terry Lyons.
+\newblock Neural {SDE}s as infinite-dimensional {GAN}s.
+\newblock In \emph{International Conference on Machine Learning}, pages 5453--5463. PMLR, 2021.
 
 \bibitem[Kolmogorov(1957)]{kolmogorov1957representation}
 Andrei~Nikolaevich Kolmogorov.
@@ -74,6 +89,11 @@ Timo Schick, Jane Dwivedi-Yu, Roberto Dess{\`e}, Roberta Raileanu, Maria Lomeli,
 Paul Wilmott, Jeff Dewynne, and Sam Howison.
 \newblock \emph{Option Pricing: Mathematical Models and Computation}.
 \newblock Oxford Financial Press, 1993.
+
+\bibitem[Wu et~al.(2023)Wu, Irsoy, Lu, Dabravolski, Dredze, Gehrmann, Kambadur, Rosenberg, and Mann]{wu2023bloomberggpt}
+Shijie Wu, Ozan Irsoy, Steven Lu, Vadim Dabravolski, Mark Dredze, Sebastian Gehrmann, Prabhanjan Kambadur, David Rosenberg, and Gideon Mann.
+\newblock {BloombergGPT}: A large language model for finance.
+\newblock \emph{arXiv preprint arXiv:2303.17564}, 2023.
 
 \bibitem[Yao et~al.(2023)Yao, Zhao, Yu, Du, Shafran, Narasimhan, and Cao]{yao_etal_2023_react}
 Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao.
