@@ -41,9 +41,19 @@ class EngineCoordinator:
                 # Perform reasoning (slow call to LLM)
                 decision = self.agent.decide_mutations(kan_state, pipeline_health)
                 
-                # Push decision to the queue
-                decision_queue.put(decision)
-                
+                # Push decision to the queue; drop oldest if full to avoid blocking worker
+                try:
+                    decision_queue.put_nowait(decision)
+                except queue.Full:
+                    print(f"Decision queue full (maxsize={decision_queue.maxsize}); "
+                          "dropping stale decision to make room.")
+                    try:
+                        decision_queue.get_nowait()
+                        decision_queue.task_done()
+                    except queue.Empty:
+                        pass
+                    decision_queue.put_nowait(decision)
+
                 context_queue.task_done()
             except queue.Empty:
                 continue
