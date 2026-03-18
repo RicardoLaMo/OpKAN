@@ -14,8 +14,8 @@ from typing import Dict, Any
 from src.agent.dsl import ReflexDecision, StrategicDecision, EdgeMutation, RegimeThesis
 
 # Paper thresholds (§4.3)
-L1_S1_PRUNE_THRESHOLD = 0.005   # System 1: stagnant B-spline edges
-L1_S2_PRUNE_THRESHOLD = 0.001   # System 2: deeply dormant edges
+L1_S1_PRUNE_THRESHOLD = 1.0     # System 1: stagnant B-spline edges (Aggressive for demo)
+L1_S2_PRUNE_THRESHOLD = 0.5     # System 2: deeply dormant edges
 HMM_TRANSITION_MASS   = 0.30    # off-diagonal sum above this → transition detected
 
 REGIME_LABELS = {0: "Diffusion/Stable", 1: "Vol Expansion", 2: "Jump/Crash"}
@@ -41,11 +41,18 @@ class RuleBasedFallbackAgent:
             edge_stats: {edge_id: {"l1_norm": float, "type": str}, ...}
             loss_delta: loss.item() at this step (positive = loss rose, negative = fell)
         """
-        prunes = [
+        # Filter for bspline edges only, avoiding re-pruning
+        candidates = [
             edge_id
             for edge_id, stats in edge_stats.items()
-            if isinstance(stats, dict) and stats.get("l1_norm", 1.0) < L1_S1_PRUNE_THRESHOLD
+            if isinstance(stats, dict) 
+            and stats.get("type") == "bspline"
+            and stats.get("l1_norm", 100.0) < L1_S1_PRUNE_THRESHOLD
         ]
+        
+        # Limit to 5 prunes per step to maintain gradient flow
+        prunes = candidates[:5]
+        
         lr_adjustment = 0.9 if loss_delta > 0.001 else 1.0
 
         reasoning = (
@@ -66,8 +73,7 @@ class RuleBasedFallbackAgent:
         model_state: Dict[str, Any],
     ) -> StrategicDecision:
         """
-        System 2 (strategic, ~0 ms): emit PRUNE mutations for deeply dormant
-        edges; use HMM transition matrix to assess regime shift probability.
+        System 2 (strategic, ~0 ms): emit PRUNE and REPLACE mutations.
 
         Args:
             history:      {"step": int, "loss": float, "current_regime_id": int}
@@ -76,6 +82,9 @@ class RuleBasedFallbackAgent:
             model_state:  {edge_id: {"l1_norm": float, "type": str}, ...}
         """
         mutations = []
+        regime_id = int(history.get("current_regime_id", 0))
+        
+        # 1. PRUNE deeply dormant edges
         for edge_id, stats in model_state.items():
             if not isinstance(stats, dict):
                 continue
@@ -92,6 +101,24 @@ class RuleBasedFallbackAgent:
                             f"L1 norm {stats['l1_norm']:.6f} below strategic "
                             f"prune threshold {L1_S2_PRUNE_THRESHOLD}."
                         ),
+                    )
+                )
+
+        # 2. Strategic REPLACE (Trigger-based Action)
+        # If in EXPANSION or JUMP regime, mutate stagnant B-splines into symbolic curves
+        if regime_id > 0: # 1: EXPANSION, 2: JUMP
+            candidates = [
+                eid for eid, s in model_state.items() 
+                if s.get("type") == "bspline" and s.get("l1_norm", 0) < 0.01
+            ]
+            # Mutate top-2 candidates to avoid over-mutation
+            for edge_id in candidates[:2]:
+                mutations.append(
+                    EdgeMutation(
+                        edge_id=edge_id,
+                        action="REPLACE",
+                        formula="torch.pow(x, 2)",
+                        reasoning=f"High vol regime ({REGIME_LABELS[regime_id]}) detected. Replacing stagnant edge for curvature capturing."
                     )
                 )
 
