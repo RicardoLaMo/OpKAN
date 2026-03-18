@@ -2,11 +2,17 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{booktabs, amsmath, amssymb, natbib, listings, xcolor, enumitem, parskip, geometry, hyperref, bm}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric,arrows.meta,positioning,fit,backgrounds,calc}
 
 \geometry{margin=1in}
 \setlength{\parskip}{3pt}
 
 \definecolor{codeblue}{RGB}{30,100,200}
+\definecolor{layerA}{RGB}{210,230,255}
+\definecolor{layerB}{RGB}{210,255,220}
+\definecolor{layerC}{RGB}{245,220,255}
+\definecolor{layerD}{RGB}{255,235,210}
 \lstset{
   basicstyle=\ttfamily\small,
   keywordstyle=\color{codeblue}\bfseries,
@@ -52,6 +58,9 @@ learning under regime change. The system sustains $\mathbf{26{,}300}$\,smp/sec o
 with zero GPU blocking, showing that online structural governance need not compromise
 training efficiency.
 \end{abstract}
+
+\medskip
+\noindent\textbf{Keywords:} Kolmogorov-Arnold Networks, Physics-Informed Neural Networks, Dual-Process Architecture, Topology Management, Heston Stochastic Volatility, Options Pricing, Large Language Models, Heterogeneous Neural Networks
 
 % =====================================================================
 \section{Introduction}
@@ -315,6 +324,57 @@ The \texttt{EngineCoordinator} manages four bounded queues (two input queues,
 training batch, \texttt{apply\_pending\_mutations()} non-blockingly drains both output
 queues. If no decisions are pending, training continues at full GPU throughput. The GPU
 never waits on the LLM.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  node distance=0.55cm and 2.2cm,
+  box/.style={rectangle, rounded corners=4pt, draw=black!50, minimum width=3.6cm,
+              minimum height=0.65cm, align=center, font=\small},
+  databox/.style={box, fill=layerA},
+  kannbox/.style={box, fill=layerB},
+  agentbox/.style={box, fill=layerC},
+  secbox/.style={box, fill=layerD},
+  arr/.style={-Stealth, thick},
+  dasharr/.style={-Stealth, dashed, thick, gray!70}
+]
+%% ---- Data column (left) ----
+\node[databox] (market)   {Market Data (OPRA)};
+\node[databox, below=of market]  (feat)    {Feature Vector $\bm{f}_t$};
+\node[databox, below=of feat]    (hmm)     {HMM Regime Detector\\$r_t \in \{0,1,2\}$};
+%% ---- PI-KAN (centre) ----
+\node[kannbox, below=1.1cm of hmm] (pikan)
+  {PI-KAN Training Loop\\(GPU: $\mathcal{L}_\text{PDE}+\lambda\mathcal{L}_\text{BC}$)};
+%% ---- Agent (right of PI-KAN) ----
+\node[agentbox, right=2.4cm of pikan, yshift= 0.75cm] (sys1)
+  {System~1: Qwen 2.5-7B\\Reflex $<$50\,ms};
+\node[agentbox, right=2.4cm of pikan, yshift=-0.75cm] (sys2)
+  {System~2: Qwen 2.5-32B\\Strategy 200--500\,ms};
+%% ---- Security + output ----
+\node[secbox,  below=1.1cm of pikan] (mutator)
+  {TopologicalMutator\\(AST-validated, atomic rollback)};
+\node[kannbox, below=of mutator] (topology)
+  {Updated KAN Topology\\(B-spline $\cup$ Symbolic edges)};
+%% ---- Arrows ----
+\draw[arr] (market)  -- (feat);
+\draw[arr] (feat)    -- (hmm);
+\draw[arr] (hmm)     -- (pikan);
+\draw[dasharr] (pikan.east) to[bend left=12]
+  node[above, font=\footnotesize, pos=0.45]{async queue} (sys1.west);
+\draw[dasharr] (pikan.east) to[bend right=12] (sys2.west);
+\draw[dasharr] (sys1.west) to[bend left=12] (pikan.east);
+\draw[dasharr] (sys2.west) to[bend right=12] (pikan.east);
+\draw[arr] (pikan)   -- (mutator);
+\draw[arr] (mutator) -- (topology);
+\end{tikzpicture}
+\caption{OpKAN information flow across three decoupled layers. Blue: data pipeline
+(OPRA market feed, feature extraction, HMM regime detector). Green: PI-KAN training
+loop on GPU. Purple: dual-process topology agent (System~1 reflexive at $<$50\,ms;
+System~2 strategic at 200--500\,ms). Orange: security and mutation layer
+(AST-validated, atomic rollback). Dashed arrows indicate asynchronous queues; the GPU
+never blocks on agent decisions.}
+\label{fig:architecture}
+\end{figure}
 
 \subsection{Safety: Typed DSL and Atomic Rollback}
 
