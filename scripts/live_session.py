@@ -20,8 +20,8 @@ sys.stdout.reconfigure(line_buffering=True)
 
 # ── Regime constants ────────────────────────────────────────────────────────
 REGIME_LABELS   = {0: "STABLE", 1: "EXPANSION", 2: "JUMP"}
-REGIME_WINDOW   = 100   # minimum samples before first HMM fit
-REGIME_REFIT_INTERVAL = 25  # refit every N steps after warmup
+REGIME_WINDOW   = 40    # Reduced for faster demo feedback
+REGIME_REFIT_INTERVAL = 20
 
 
 class PIKANModel(nn.Module):
@@ -207,15 +207,18 @@ def run_live_session(data_path: str, batch_size: int = 256, epochs: int = 1000):
                             if isinstance(edge, BSplineEdge):
                                 l1_penalty += edge.coefficients.abs().sum()
                 
-                # Combine losses with a strong penalty for L1 in demo
-                loss = pde_loss + bnd_loss + (0.01 * l1_penalty)
+                # Combine losses with a moderate penalty for L1 in demo
+                loss = pde_loss + bnd_loss + (0.005 * l1_penalty)
                 loss.backward()
 
-                # Real-time Greeks via autograd
-                dV_dS      = torch.autograd.grad(V.sum(), S_int, create_graph=True, retain_graph=True)[0]
-                delta_val  = dV_dS.mean().item()
-                gamma_val  = torch.autograd.grad(dV_dS.sum(), S_int, retain_graph=True)[0].mean().item()
-                vega_val   = torch.autograd.grad(V.sum(), v_int, retain_graph=True)[0].mean().item()
+                # 🚀 Real-time Greeks via autograd (Robust)
+                if V.requires_grad:
+                    dV_dS      = torch.autograd.grad(V.sum(), S_int, create_graph=True, retain_graph=True)[0]
+                    delta_val  = dV_dS.mean().item()
+                    gamma_val  = torch.autograd.grad(dV_dS.sum(), S_int, retain_graph=True)[0].mean().item()
+                    vega_val   = torch.autograd.grad(V.sum(), v_int, retain_graph=True)[0].mean().item()
+                else:
+                    delta_val, gamma_val, vega_val = 0.0, 0.0, 0.0
 
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
                 optimizer.step()
