@@ -52,28 +52,26 @@
 % -----------------------------------------------------------------------
 % CHANGE 1: New abstract
 \begin{abstract}
-Physics-informed Kolmogorov-Arnold Networks (KANs) introduce a structural decision
-problem that gradient descent cannot solve: when should an edge remain a learnable
-spline, be replaced by a symbolic function, or be pruned to zero? We formalize this
-as the \emph{topology surgery problem} and identify five chronic failure modes in
-heterogeneous KANs, each arising from a distinct gradient-signal gap: topology
-stagnation, parameterization lock-in, symbolic-numerical tension, regime blindness,
-and activation instability under second-order derivative constraints. To address this,
-we propose a \textbf{dual-process topology agent}: a fast reflexive controller performs
-high-frequency local maintenance (pruning, learning-rate stabilization); a slow
-strategic controller performs low-frequency topology surgery guided by PDE geometry
-and market-regime signals, separating the two structural decisions that gradient
-descent cannot distinguish. A typed domain-specific language, static expression
-validator, and atomic rollback guarantee that every mutation preserves activation
-smoothness and transactional integrity. Demonstrated on a Heston stochastic volatility
-PI-KAN, where exact second derivatives are required by the cross-derivative term: an
-ablation study shows System~2 is required for regime-ordered behavior, while System~1
-restores full throughput without sacrificing those guarantees. PDE residual
+Physics-informed Kolmogorov-Arnold Networks (KANs) introduce a structural management
+problem that gradient descent cannot solve: when should an edge remain a B-spline, be
+replaced by a symbolic function, or be pruned? We formalize this as the \emph{topology
+surgery problem} and show that it creates five chronic failure modes in heterogeneous
+KANs: topology stagnation, parameterization lock-in, symbolic-numerical tension, regime
+blindness, and instability in the second-derivative smoothness required by the PDE. To
+address this, we propose a \textbf{dual-process topology agent}: a fast reflexive
+controller performs high-frequency local maintenance such as pruning and learning-rate
+stabilization, while a slow strategic controller performs low-frequency topology surgery
+guided by PDE geometry and market-regime signals. A typed DSL, static AST allowlist, and
+atomic rollback ensure that every mutation preserves twice-differentiable smoothness
+($C^2$ continuity) and transactional integrity. We demonstrate the framework on a Heston
+stochastic-volatility PI-KAN, where stable second derivatives are a hard requirement
+because of the cross-derivative term. An ablation shows that System~2 is required for
+regime-ordered behavior, while System~1 restores full throughput; PDE residual
 minimization alone fails all five financial monotonicity checks under distributional
-shift, revealing a training-objective insufficiency that may extend to other
-physics-constrained networks under regime change. The system sustains
-$\mathbf{26{,}300}$\,smp/sec on H200 with zero GPU blocking, showing that online
-structural governance need not compromise training efficiency.
+shift, revealing a broader training-objective insufficiency in physics-constrained
+learning under regime change. The system sustains $\mathbf{26{,}300}$\,smp/sec on H200
+with zero GPU blocking, showing that online structural governance need not compromise
+training efficiency.
 \end{abstract}
 
 % =====================================================================
@@ -84,26 +82,24 @@ structural governance need not compromise training efficiency.
 \subsection{The Topology Surgery Problem in Heterogeneous KANs}
 \label{sec:intro:surgery}
 
-A KAN with a mixed topology (some edges parameterized as B-splines, others replaced
-with closed-form symbolic functions (\texttt{C2SymbolicEdge}), others pruned to zero
-(\texttt{ZeroEdge})) is a qualitatively different computational object from a
-homogeneous MLP. The edge-level parameterization choice is not a hyperparameter set
-before training: it is an ongoing decision made during training as the network's
-activation profiles evolve, regime signals change, and new domain knowledge becomes
-available.
+A heterogeneous KAN, where some edges remain B-splines, others are replaced by
+closed-form symbolic functions, and others are pruned to zero, is not just a larger
+MLP; it is a mutable mathematical object whose structure can change during training.
 
-Gradient descent cannot make this decision. It can optimize the coefficients of a
-B-spline edge but has no mechanism to decide that the edge's activation profile now
-closely approximates $e^{-|x|}$ and should be replaced with a closed-form symbolic
-function. It can drive a B-spline's coefficients toward zero but provides no pruning
-signal because the gradient of a near-zero activation is also near-zero. This is the
-\emph{topology surgery problem}: a class of decisions about the network's structure
-that falls strictly outside the scope of gradient-based optimization.
+In such a network, edge parameterization is not a one-time hyperparameter choice
+fixed before training. It is an ongoing structural decision that depends on evolving
+activation profiles, regime signals, and available domain knowledge. Gradient descent
+can optimize the coefficients of a B-spline edge, but it cannot decide that the edge
+should switch class: from spline to symbolic form, or from a weak edge to zero. It
+can drive a B-spline's coefficients toward zero, but provides no pruning signal
+because the gradient of a near-zero activation is also near-zero. This is the
+\emph{topology surgery problem}: a class of structural decisions that falls strictly
+outside the scope of gradient-based optimization.
 
 This problem manifests in five distinct chronic failure modes of heterogeneous KAN
-topology management. Each failure mode corresponds to a distinct gradient-signal gap,
-a regime where the training objective provides no corrective gradient for the
-relevant structural decision (Table~\ref{tab:problems}).
+topology management. Each failure mode arises from a distinct gradient-signal gap:
+a setting in which the training loss provides no corrective signal for the structural
+decision that must be made (Table~\ref{tab:problems}).
 
 \begin{table}[ht]
 \centering
@@ -143,36 +139,39 @@ $C^2$ instability & No explicit $C^2$-norm term in $\mathcal{L}$ & Ill-condition
   a frozen topology cannot adapt. Weight updates shift the learned function but cannot
   restructure which edges carry which mathematical primitives.
 
-  \item \textbf{$C^2$ (twice-differentiable) instability.} $C^2$ instability refers specifically to the
-  condition where aggressive learning-rate updates drive B-spline coefficient updates
-  that increase $\|\partial^2\phi_e/\partial x^2\|_\infty$ beyond the tolerance for
-  stable autograd evaluation of the Heston cross-derivative term
-  $\rho\sigma vS\,\partial^2 V/\partial S\partial v$. The symptom is NaN propagation
-  in the cross-derivative computation, detectable by monitoring the L2 norm of the
-  second-derivative outputs.
+  \item \textbf{$C^2$ instability.} Aggressive learning-rate updates can make an edge
+  insufficiently smooth for stable second-derivative computation. In the Heston
+  setting this matters directly: the PDE contains a cross-derivative term
+  $\rho\sigma vS\,\partial^2 V/\partial S\partial v$ that is evaluated by autograd,
+  so unstable edge curvature propagates as NaN through the cross-derivative
+  computation. The symptom is detectable by monitoring the L2 norm of second-derivative
+  outputs during training.
 \end{enumerate}
 
 \subsection{Why Two Brains}
 \label{sec:intro:twobrains}
 
 The five problems decompose naturally by frequency and cognitive type. Problems~1
-and~5 (stagnation and $C^2$ instability) are \textbf{high-frequency, low-complexity}:
-they can be detected from local statistics (L1 norm of edge activations,
-second-derivative magnitude) and resolved with simple actions (prune, adjust lr).
-A fast model ($<$50\,ms, 7B parameters) is sufficient; the decision requires
-pattern recognition, not mathematical reasoning.
+and~5, topology stagnation and second-derivative instability, are high-frequency and
+low-complexity. They can be detected from local statistics such as edge activation
+magnitude or second-derivative size, and handled with simple actions such as pruning
+or learning-rate adjustment. These are reflexive maintenance tasks; a fast model
+($<$50\,ms, 7B parameters) is sufficient.
 
-Problems~2, 3, and~4 (parameterization lock-in, symbolic-numerical tension, regime
-blindness) are \textbf{low-frequency, high-complexity}: they require reasoning about
-the network's global activation geometry, the mathematical properties of candidate
-symbolic functions, and the relationship between regime signals and structural
-adaptation. A slow, large model (200--500\,ms, 32B parameters) is necessary; the
-decision requires strategic structural reasoning over PDE structure.
+Problems~2, 3, and~4, parameterization lock-in, symbolic-numerical tension, and
+regime blindness, are low-frequency and high-complexity. They require reasoning about
+global activation geometry, the mathematical validity of candidate symbolic forms,
+and the relationship between market regime and topology adaptation. These are
+strategic structural decisions; a slower, larger model (200--500\,ms, 32B parameters)
+is needed because these decisions require multi-step reasoning over PDE structure,
+symbolic validity, and regime context.
 
 One brain of either type cannot address all five. A single fast model makes
 mathematically incoherent symbolic replacements. A single slow model blocks the GPU.
-The dual-process design is not an engineering compromise; it is a consequence of
-the cognitive structure of the topology surgery problem.
+The dual-process design is not merely an efficiency tradeoff; it follows from the
+structure of the problem itself. Reflexive maintenance and strategic topology surgery
+are different kinds of decisions, and they should not be collapsed into a single
+controller.
 
 Our ablation study (Table~\ref{tab:ablation}) confirms the division of labor
 empirically: System~2 alone achieves regime-ordered behavior but at reduced
