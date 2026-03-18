@@ -1,0 +1,83 @@
+\begin{thebibliography}{15}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[B{\"u}hler et~al.(2019)B{\"u}hler, Gonon, Teichmann, and Wood]{buhler2019deep}
+Hans B{\"u}hler, Lukas Gonon, Josef Teichmann, and Ben Wood.
+\newblock Deep hedging.
+\newblock \emph{Quantitative Finance}, 19\penalty0 (8):\penalty0 1271--1291, 2019.
+
+\bibitem[Elsken et~al.(2019)Elsken, Metzen, and Hutter]{elsken2019neural}
+Thomas Elsken, Jan~Hendrik Metzen, and Frank Hutter.
+\newblock Neural architecture search: A survey.
+\newblock \emph{Journal of Machine Learning Research}, 20\penalty0 (55):\penalty0 1--21, 2019.
+
+\bibitem[Heston(1993)]{heston1993closed}
+Steven~L Heston.
+\newblock A closed-form solution for options with stochastic volatility with applications to bond and currency options.
+\newblock \emph{Review of Financial Studies}, 6\penalty0 (2):\penalty0 327--343, 1993.
+
+\bibitem[Horvath et~al.(2021)Horvath, Muguruza, and Tomas]{horvath2021deep}
+Blanka Horvath, Aitor Muguruza, and Mehdi Tomas.
+\newblock Deep learning volatility: a deep neural network perspective on pricing and calibration in (rough) volatility models.
+\newblock volume~21, pages 11--27, 2021.
+
+\bibitem[Hu et~al.(2021)Hu, Shen, Wallis, Allen-Zhu, Li, Wang, Wang, and Chen]{hu2021lora}
+Edward~J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu~Wang, and Weizhu Chen.
+\newblock {LoRA}: Low-rank adaptation of large language models.
+\newblock \emph{arXiv preprint arXiv:2106.09685}, 2021.
+
+\bibitem[Kahneman(2011)]{kahneman2011thinking}
+Daniel Kahneman.
+\newblock \emph{Thinking, Fast and Slow}.
+\newblock Farrar, Straus and Giroux, 2011.
+
+\bibitem[Kidger et~al.(2021)Kidger, Foster, Li, and Lyons]{kidger2021neural}
+Patrick Kidger, James Foster, Xuechen Li, and Terry Lyons.
+\newblock Neural {SDE}s as infinite-dimensional {GAN}s.
+\newblock In \emph{International Conference on Machine Learning}, pages 5453--5463. PMLR, 2021.
+
+\bibitem[Kirkpatrick et~al.(2017)Kirkpatrick, Pascanu, Rabinowitz, Veness, Desjardins, Rusu, Milan, Quan, Ramalho, Grabska-Barwinska, et~al.]{kirkpatrick2017overcoming}
+James Kirkpatrick, Razvan Pascanu, Neil Rabinowitz, Joel Veness, Guillaume Desjardins, Andrei~A Rusu, Kieran Milan, John Quan, Tiago Ramalho, Agnieszka Grabska-Barwinska, et~al.
+\newblock Overcoming catastrophic forgetting in neural networks.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 114\penalty0 (13):\penalty0 3521--3526, 2017.
+
+\bibitem[Kolmogorov(1957)]{kolmogorov1957representation}
+Andrei~Nikolaevich Kolmogorov.
+\newblock On the representation of continuous functions of many variables by superposition of continuous functions of one variable and addition.
+\newblock In \emph{Doklady Akademii Nauk SSSR}, volume 114, pages 953--956. 1957.
+
+\bibitem[Liu et~al.(2019)Liu, Simonyan, and Yang]{liu2019darts}
+Hanxiao Liu, Karen Simonyan, and Yiming Yang.
+\newblock {DARTS}: Differentiable architecture search.
+\newblock In \emph{International Conference on Learning Representations}, 2019.
+
+\bibitem[Liu et~al.(2024)Liu, Wang, Vaidya, Ruehle, Halverson, Solja{\v{c}}i{\'{c}}, Hou, and Tegmark]{liu_etal_2024_kan}
+Ziming Liu, Yixuan Wang, Vaibhav Vaidya, Fabian Ruehle, James Halverson, Marin Solja{\v{c}}i{\'{c}}, Thomas~Y Hou, and Max Tegmark.
+\newblock {KAN}: Kolmogorov-arnold networks.
+\newblock \emph{arXiv preprint arXiv:2404.19756}, 2024.
+
+\bibitem[Polo-Molina et~al.(2024)Polo-Molina, Alfaya, and Portela]{polo_molina_etal_2024_monokan}
+Alejandro Polo-Molina, David Alfaya, and Javier Portela.
+\newblock {MonoKAN}: Certified monotonic kolmogorov-arnold network.
+\newblock \emph{arXiv preprint arXiv:2409.11078}, 2024.
+
+\bibitem[Raissi et~al.(2019)Raissi, Perdikaris, and Karniadakis]{raissi2019physics}
+Maziar Raissi, Paris Perdikaris, and George~E Karniadakis.
+\newblock Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations.
+\newblock \emph{Journal of Computational Physics}, 378:\penalty0 686--707, 2019.
+
+\bibitem[Schick et~al.(2023)Schick, Dwivedi-Yu, Dess{\`e}, Raileanu, Lomeli, Zettlemoyer, Cancedda, and Scialom]{schick_etal_2023_toolformer}
+Timo Schick, Jane Dwivedi-Yu, Roberto Dess{\`e}, Roberta Raileanu, Maria Lomeli, Luke Zettlemoyer, Nicola Cancedda, and Thomas Scialom.
+\newblock Toolformer: Language models can teach themselves to use tools.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2023.
+
+\bibitem[Yao et~al.(2023)Yao, Zhao, Yu, Du, Shafran, Narasimhan, and Cao]{yao_etal_2023_react}
+Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao.
+\newblock {ReAct}: Synergizing reasoning and acting in language models.
+\newblock In \emph{International Conference on Learning Representations}, 2023.
+
+\end{thebibliography}
