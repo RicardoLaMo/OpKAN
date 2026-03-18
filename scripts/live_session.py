@@ -1,21 +1,28 @@
 import torch
 import torch.nn as nn
+import numpy as np
 import time
-import random
+import sys
+from typing import Dict, Any
+
 from src.data.parser import load_opra_data, clean_and_augment
 from src.data.dataset import get_dataloader
-from src.models.kan_layer import KANLayer
+from src.models.kan_layer import KANLayer, BSplineEdge
 from src.models.heston_pde import heston_pde_loss, heston_boundary_loss
+from src.models.hmm_regime import RegimeHMM
 from src.engine.coordinator import EngineCoordinator
 from src.agent.core import LiuClawAgent
-from src.agent.dsl import StrategicDecision, ReflexDecision, EdgeMutation, RegimeThesis
+from src.agent.fallback import RuleBasedFallbackAgent
 from src.engine.telemetry import telemetry
-
-
-import sys
 
 # Ensure logs are visible in the launcher immediately
 sys.stdout.reconfigure(line_buffering=True)
+
+# ── Regime constants ────────────────────────────────────────────────────────
+REGIME_LABELS   = {0: "STABLE", 1: "EXPANSION", 2: "JUMP"}
+REGIME_WINDOW   = 100   # minimum samples before first HMM fit
+REGIME_REFIT_INTERVAL = 25  # refit every N steps after warmup
+
 
 class PIKANModel(nn.Module):
     def __init__(self, layers_config=None):
@@ -32,10 +39,86 @@ class PIKANModel(nn.Module):
         return x
 
 
-def run_live_session(data_path: str, batch_size: int = 4096, epochs: int = 5):
+# ── Model introspection helpers ─────────────────────────────────────────────
+
+def extract_model_edge_stats(model: PIKANModel) -> Dict[str, Any]:
     """
-    Live end-to-end training session stress-testing throughput and LLM interaction.
-    Integrates real-time Greeks calculation and Telemetry publishing.
+    Return per-edge L1 norms for all BSplineEdge instances.
+    Used by System 1 (think_fast) to decide which edges to prune.
+    Format: {edge_id: {"l1_norm": float, "type": "bspline"|"pruned"}, ...}
+    """
+    stats: Dict[str, Any] = {}
+    for l_idx, layer in enumerate(model.layers):
+        for i in range(layer.in_features):
+            for j in range(layer.out_features):
+                edge = layer.edges[i][j]
+                edge_id = f"L{l_idx}_N{i}_to_L{l_idx+1}_N{j}"
+                if isinstance(edge, BSplineEdge):
+                    l1 = edge.coefficients.detach().abs().sum().item()
+                    stats[edge_id] = {"l1_norm": round(l1, 6), "type": "bspline"}
+                else:
+                    stats[edge_id] = {"l1_norm": 0.0, "type": "pruned"}
+    return stats
+
+
+def extract_model_state(model: PIKANModel) -> Dict[str, Any]:
+    """
+    Compact serializable summary of the full model topology.
+    Used by System 2 (think_slow) for structural reasoning.
+    Returns top-32 edges by L1 norm to stay within LLM context limits.
+    """
+    all_edges: Dict[str, Any] = {}
+    for l_idx, layer in enumerate(model.layers):
+        for i in range(layer.in_features):
+            for j in range(layer.out_features):
+                edge = layer.edges[i][j]
+                edge_id = f"L{l_idx}_N{i}_to_L{l_idx+1}_N{j}"
+                if isinstance(edge, BSplineEdge):
+                    l1 = edge.coefficients.detach().abs().sum().item()
+                    all_edges[edge_id] = {"type": "bspline", "l1_norm": round(l1, 6)}
+                else:
+                    all_edges[edge_id] = {"type": "pruned", "l1_norm": 0.0}
+
+    # Truncate to top-32 by L1 norm (avoid bloating LLM prompt)
+    sorted_edges = sorted(all_edges.items(), key=lambda kv: kv[1]["l1_norm"], reverse=True)
+    return dict(sorted_edges[:32])
+
+
+def _regime_stats_to_json(stats: dict) -> dict:
+    """Convert numpy arrays in regime stats to plain Python lists for JSON serialization."""
+    return {k: v.tolist() if hasattr(v, "tolist") else v for k, v in stats.items()}
+
+
+# ── Agent selection ─────────────────────────────────────────────────────────
+
+def _make_agent():
+    """
+    Try to connect to the vLLM server. Fall back to rule-based agent if unreachable.
+    """
+    try:
+        agent = LiuClawAgent()
+        # Probe using System 1 interface (minimal tokens)
+        agent.think_fast(0, {}, 0.0)
+        msg = "✅ vLLM server reachable — using real Qwen agents."
+        print(msg)
+        telemetry.log_event(msg)
+        return agent
+    except Exception as e:
+        msg = f"⚠️  vLLM unreachable ({type(e).__name__}): using rule-based fallback agent."
+        print(msg)
+        telemetry.log_event(msg)
+        return RuleBasedFallbackAgent()
+
+
+# ── Main session ─────────────────────────────────────────────────────────────
+
+def run_live_session(data_path: str, batch_size: int = 256, epochs: int = 1000):
+    """
+    Live end-to-end training session.
+    - Real KAN model solving the Heston PDE via PINN.
+    - Real Greeks via torch.autograd.
+    - HMM regime detector updated every REGIME_REFIT_INTERVAL steps.
+    - Dual-process coordinator backed by real Qwen agents (or rule-based fallback).
     """
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"\n--- ⚡ LIVE SESSION: OpKAN H200 Deployment --- Device: {device}")
@@ -43,147 +126,177 @@ def run_live_session(data_path: str, batch_size: int = 4096, epochs: int = 5):
     # Heston model parameters
     r, kappa, theta, sigma, rho, K, T = 0.05, 2.0, 0.04, 0.3, -0.7, 100.0, 1.0
 
-    # 1. Start vLLM Mock
-    agent = LiuClawAgent()
-
-    def mock_think_fast(step, edge_stats, loss_delta):
-        time.sleep(0.02)
-        # L0 has 3 inputs, 16 outputs in PIKANModel([3, 16, 1])
-        i = random.randint(0, 2)
-        j = random.randint(0, 15)
-        return ReflexDecision(
-            reasoning=f"Reflexive prune at step {step}.",
-            prunes=[f"L0_N{i}_to_L1_N{j}"],
-            lr_adjustment=1.0,
-        )
-
-    def mock_think_slow(history, regime_data, model_state):
-        time.sleep(0.2)
-        step = history.get("step", 0)
-        regime = 1 if step > 500 else 0
-        return StrategicDecision(
-            reasoning=f"Strategic review at step {step}. Market state: {regime}.",
-            mutations=[EdgeMutation(
-                edge_id="L0_N0_to_L1_N0",
-                action="REPLACE",
-                formula="torch.pow(x, 2)",
-                reasoning="Capturing volatility smile curvature.",
-            )],
-            regime_analysis=RegimeThesis(
-                hmm_transition_detected=(regime == 1),
-                predicted_regime=regime,
-                thesis_statement="Structural shift detected via HMM transition probabilities."
-            ),
-            training_command="CONTINUE",
-        )
-
-    agent.think_fast = mock_think_fast
-    agent.think_slow = mock_think_slow
-
+    # Agent: real LLM or rule-based fallback
+    agent = _make_agent()
     coordinator = EngineCoordinator(agent)
     coordinator.start_threads()
 
-    # 2. Data loading
+    # HMM regime detector
+    hmm_regime = RegimeHMM(n_regimes=3)
+    regime_feature_buffer = []       # rows of [pde_loss, abs(delta), abs(vega)]
+    current_regime_id    = 0
+    current_regime_label = "INITIALIZING"
+
+    # Data loading
     print(f"📥 Loading data from {data_path}...")
     df = load_opra_data(data_path)
-    
-    # Limit to 10k rows for near-instant initialization in demo mode
-    if len(df) > 10000:
-        print(f"💡 Large dataset detected ({len(df):,} rows). Subsampling to 10,000 rows for lightning-fast demo.")
-        df = df.sample(10000).sort_values('timestamp')
-
+    if len(df) > 20000:
+        print(f"💡 Subsampling to 20,000 rows for high-resolution TUI motion.")
+        df = df.sample(20000).sort_values('timestamp')
     df = clean_and_augment(df)
     dataloader = get_dataloader(df, batch_size=batch_size, shuffle=False)
 
-    # 3. Model and optimizer
+    # Model and optimizer
     model = PIKANModel().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-    print(f"🔥 Starting Stress Test: {len(df)} samples | {epochs} epochs | batch={batch_size}")
+    print(f"🔥 Starting Continuous Session: {len(df)} samples | {epochs} epochs | batch={batch_size}")
     total_steps = 0
-    start_time = time.time()
+    start_time  = time.time()
+    loss_history = []   # rolling window of recent losses for System 2 context
 
     # Write initial state
     telemetry.write({
         "step": 0, "pde_loss": 1.0, "option_price": 10.0,
         "delta": 0.5, "gamma": 0.02, "vega": 0.1, "throughput": 0,
-        "regime": "INITIALIZING", "logs": [], "s1_active": False, "s2_active": False, "dual_mode": True
+        "regime": current_regime_label, "logs": [],
+        "s1_active": False, "s2_active": False, "dual_mode": True,
+        "active": True,
     })
 
-    for epoch in range(epochs):
-        for i, (features, _) in enumerate(dataloader):
-            total_steps += 1
-            bs = features.shape[0]
+    try:
+        for epoch in range(epochs):
+            for i, (features, _) in enumerate(dataloader):
+                total_steps += 1
+                bs = features.shape[0]
 
-            # PINN collocation points
-            S_int = torch.rand(bs, 1, device=device, requires_grad=True) * 200.0
-            v_int = torch.rand(bs, 1, device=device, requires_grad=True) * 0.5
-            t_int = torch.rand(bs, 1, device=device, requires_grad=True) * T
+                # PINN collocation points
+                S_int = torch.rand(bs, 1, device=device, requires_grad=True) * 200.0
+                v_int = torch.rand(bs, 1, device=device, requires_grad=True) * 0.5
+                t_int = torch.rand(bs, 1, device=device, requires_grad=True) * T
 
-            optimizer.zero_grad()
+                optimizer.zero_grad()
 
-            # Forward for Greeks
-            # Input: (S, v, t)
-            inputs = torch.cat([S_int, v_int, t_int], dim=1)
-            V = model(inputs)
-            
-            # PDE Loss
-            pde_loss = heston_pde_loss(model, S_int, v_int, t_int, r, kappa, theta, sigma, rho)
-            
-            # Boundary conditions
-            S_term = torch.rand(bs, 1, device=device) * 200.0
-            v_term = torch.rand(bs, 1, device=device) * 0.5
-            t_term = torch.ones(bs, 1, device=device) * T
-            bnd_loss = heston_boundary_loss(model, S_term, v_term, t_term, K,
-                                            torch.zeros(bs, 1, device=device), v_term, torch.rand(bs, 1, device=device)*T,
-                                            torch.ones(bs, 1, device=device)*1000.0, v_term, torch.rand(bs, 1, device=device)*T,
-                                            r, T)
-            
-            loss = pde_loss + bnd_loss
-            loss.backward()
+                V = model(torch.cat([S_int, v_int, t_int], dim=1))
 
-            # 🚀 Real-time Greeks Extraction (BEFORE optimizer.step() modifies weights)
-            # We need create_graph=True for dV_dS to compute Gamma (second derivative)
-            dV_dS = torch.autograd.grad(V.sum(), S_int, create_graph=True, retain_graph=True)[0]
-            delta_val = dV_dS.mean().item()
-            gamma_val = torch.autograd.grad(dV_dS.sum(), S_int, retain_graph=True)[0].mean().item()
-            vega_val = torch.autograd.grad(V.sum(), v_int, retain_graph=True)[0].mean().item()
+                # PDE loss
+                pde_loss = heston_pde_loss(
+                    model, S_int, v_int, t_int, r, kappa, theta, sigma, rho
+                )
 
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            optimizer.step()
+                # Boundary conditions
+                S_term = torch.rand(bs, 1, device=device) * 200.0
+                v_term = torch.rand(bs, 1, device=device) * 0.5
+                t_term = torch.ones(bs, 1, device=device) * T
+                bnd_loss = heston_boundary_loss(
+                    model, S_term, v_term, t_term, K,
+                    torch.zeros(bs, 1, device=device), v_term,
+                    torch.rand(bs, 1, device=device) * T,
+                    torch.ones(bs, 1, device=device) * 1000.0, v_term,
+                    torch.rand(bs, 1, device=device) * T,
+                    r, T,
+                )
 
-            # LLM interaction
-            coordinator.apply_pending_mutations(model, optimizer)
+                loss = pde_loss + bnd_loss
+                loss.backward()
 
-            if total_steps % 10 == 0:
-                coordinator.request_reflex(total_steps, {"l1_norm": 0.001}, loss.item())
-            if total_steps % 100 == 0:
-                coordinator.request_strategic({"step": total_steps}, {"regime": 0}, {"model": "pi-kan"})
+                # Real-time Greeks via autograd
+                dV_dS      = torch.autograd.grad(V.sum(), S_int, create_graph=True, retain_graph=True)[0]
+                delta_val  = dV_dS.mean().item()
+                gamma_val  = torch.autograd.grad(dV_dS.sum(), S_int, retain_graph=True)[0].mean().item()
+                vega_val   = torch.autograd.grad(V.sum(), v_int, retain_graph=True)[0].mean().item()
 
-            # 📈 Publish Telemetry
-            if total_steps % 2 == 0:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                optimizer.step()
+
+                loss_val = loss.item()
+                loss_history.append(loss_val)
+                if len(loss_history) > 50:
+                    loss_history.pop(0)
+
+                # ── HMM regime update ──────────────────────────────────────
+                regime_feature_buffer.append([loss_val, abs(delta_val), abs(vega_val)])
+
+                if (
+                    total_steps % REGIME_REFIT_INTERVAL == 0
+                    and len(regime_feature_buffer) >= REGIME_WINDOW
+                ):
+                    try:
+                        window = np.array(regime_feature_buffer[-REGIME_WINDOW:])
+                        hmm_regime.fit(window)
+                        labels = hmm_regime.predict_regimes(window)
+
+                        # Sort states by mean loss (col 0): ascending → 0=STABLE, 2=JUMP
+                        means = hmm_regime.model.means_[:, 0]
+                        sorted_states = np.argsort(means)
+                        remap = {int(old): int(new) for new, old in enumerate(sorted_states)}
+                        current_regime_id    = remap[int(labels[-1])]
+                        current_regime_label = REGIME_LABELS[current_regime_id]
+                    except Exception as hmm_err:
+                        telemetry.log_event(f"HMM refit failed at step {total_steps}: {hmm_err}")
+
+                # ── LLM / fallback agent interaction ──────────────────────
+                coordinator.apply_pending_mutations(model, optimizer)
+
+                if total_steps % 10 == 0:
+                    coordinator.request_reflex(
+                        total_steps,
+                        extract_model_edge_stats(model),
+                        loss_val,
+                    )
+
+                if total_steps % 50 == 0:
+                    regime_data = (
+                        _regime_stats_to_json(hmm_regime.get_regime_stats())
+                        if hmm_regime.is_fitted
+                        else {}
+                    )
+                    coordinator.request_strategic(
+                        {
+                            "step": total_steps,
+                            "loss": loss_val,
+                            "loss_history": loss_history[-10:],
+                            "current_regime_id": current_regime_id,
+                        },
+                        regime_data,
+                        extract_model_state(model),
+                    )
+
+                # ── Telemetry publish ──────────────────────────────────────
                 elapsed = time.time() - start_time
-                tput = (total_steps * batch_size) / elapsed
+                tput = int((total_steps * batch_size) / elapsed)
                 telemetry.write({
-                    "step": total_steps,
-                    "pde_loss": loss.item(),
+                    "step":         total_steps,
+                    "pde_loss":     loss_val,
                     "option_price": V.mean().item(),
-                    "delta": delta_val,
-                    "gamma": gamma_val,
-                    "vega": vega_val,
-                    "throughput": int(tput),
-                    "regime": "EXPANSION" if total_steps > 500 else "STABLE",
-                    "logs": telemetry.read().get("logs", []),
-                    "s1_active": coordinator._reflex_thread.is_alive() if coordinator._reflex_thread else False,
-                    "s2_active": coordinator._strategic_thread.is_alive() if coordinator._strategic_thread else False,
-                    "dual_mode": True
+                    "delta":        delta_val,
+                    "gamma":        gamma_val,
+                    "vega":         vega_val,
+                    "throughput":   tput,
+                    "regime":       current_regime_label,
+                    "logs":         telemetry.read().get("logs", []),
+                    "s1_active":    coordinator._reflex_thread.is_alive() if coordinator._reflex_thread else False,
+                    "s2_active":    coordinator._strategic_thread.is_alive() if coordinator._strategic_thread else False,
+                    "dual_mode":    True,
+                    "active":       True,
                 })
 
-            if i % 50 == 0:
-                print(f"[Epoch {epoch+1}] Step {i}/{len(dataloader)} | Loss: {loss.item():.6f}")
+                if total_steps % 50 == 0:
+                    print(f"[Step {total_steps}] Loss: {loss_val:.6f} | Regime: {current_regime_label}")
 
-    coordinator.stop_threads()
+    finally:
+        final_data = telemetry.read()
+        final_data["active"] = False
+        telemetry.write(final_data)
+        coordinator.stop_threads()
 
 
 if __name__ == "__main__":
-    run_live_session("data/real_market_sim.csv")
+    import argparse
+    parser = argparse.ArgumentParser(description="OpKAN Live Session")
+    parser.add_argument("--data_path", type=str, default="data/real_market_sim.csv")
+    parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--epochs", type=int, default=1000)
+    args = parser.parse_args()
+    
+    run_live_session(args.data_path, args.batch_size, args.epochs)
