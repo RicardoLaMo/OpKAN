@@ -51,23 +51,26 @@
 
 % -----------------------------------------------------------------------
 \begin{abstract}
-Kolmogorov-Arnold Networks (KANs) enable surgical symbolic replacement of individual
-edges at runtime, creating a class of management problem gradient descent cannot solve:
-\emph{topology parameterization selection}. We identify five gradient-signal gaps in
-heterogeneous KAN topology (B-spline $\cup$ symbolic edges) and show they decompose
-across two cognitive timescales. A \textbf{dual-process topology agent} addresses
-them: System~1 (7B model, $<$50\,ms) handles high-frequency reflexive maintenance via
-statistical thresholding; System~2 (32B model, 200--500\,ms) handles low-frequency
-strategic surgery via chain-of-thought reasoning over PDE geometry. A typed DSL with
-AST allowlist and atomic rollback provides $C^2$-preserving vocabulary restriction and
-transactional integrity. Demonstrated on a physics-informed KAN solving the Heston
-stochastic volatility PDE: an ablation study shows System~2 is necessary for
-regime-ordered behavior, System~1 is necessary for sustained throughput, and PDE
-residual minimization alone is insufficient for monotonicity under distributional shift
---- a result that generalizes beyond options pricing to any physics-constrained network
-deployed under regime change. Sustained throughput: 26,300\,smp/sec on H200; zero GPU
-blocking. The controller is currently prompt-engineered; a trajectory-collection
-infrastructure for future policy fine-tuning is in place.
+Physics-informed Kolmogorov-Arnold Networks (KANs) introduce a management problem that
+gradient descent cannot solve: \emph{when should an edge remain a B-spline, be replaced
+by a symbolic function, or be pruned?} We formalize this as the \emph{topology surgery
+problem} and show it produces five chronic failure modes in heterogeneous KANs ---
+topology stagnation, parameterization lock-in, symbolic-numerical tension, regime
+blindness, and $C^2$ instability --- each arising from a distinct gradient-signal gap.
+To address this, we propose a \textbf{dual-process topology agent}: a fast reflexive
+controller performs high-frequency local maintenance (pruning, learning-rate
+stabilization); a slow strategic controller performs low-frequency topology surgery
+guided by PDE geometry and market-regime signals, separating the two tasks that
+gradient descent conflates. A typed DSL, static AST allowlist, and atomic rollback
+guarantee that every mutation preserves $C^2$ continuity and transactional integrity.
+Demonstrated on a Heston stochastic volatility PI-KAN, where the cross-derivative
+term imposes a hard $C^2$ requirement: ablation shows System~2 is \emph{necessary}
+for regime-ordered behavior, System~1 is \emph{necessary} for sustained throughput,
+and PDE residual minimization alone fails all five financial monotonicity checks under
+distributional shift --- a training-objective insufficiency result that generalizes to
+any physics-constrained network under regime change. The system sustains
+$\mathbf{26{,}300}$\,smp/sec on H200 with zero GPU blocking, showing that online
+structural governance need not compromise training efficiency.
 \end{abstract}
 
 % =====================================================================
