@@ -197,7 +197,18 @@ def run_live_session(data_path: str, batch_size: int = 256, epochs: int = 1000):
                     r, T,
                 )
 
-                loss = pde_loss + bnd_loss
+                # ── Sparsity Penalty (L1) ──
+                # Penalize B-spline coefficients to drive stagnant edges toward zero
+                l1_penalty = 0.0
+                for layer in model.layers:
+                    for i in range(layer.in_features):
+                        for j in range(layer.out_features):
+                            edge = layer.edges[i][j]
+                            if isinstance(edge, BSplineEdge):
+                                l1_penalty += edge.coefficients.abs().sum()
+                
+                # Combine losses with a strong penalty for L1 in demo
+                loss = pde_loss + bnd_loss + (0.01 * l1_penalty)
                 loss.backward()
 
                 # Real-time Greeks via autograd
@@ -214,11 +225,15 @@ def run_live_session(data_path: str, batch_size: int = 256, epochs: int = 1000):
                 if len(loss_history) > 50:
                     loss_history.pop(0)
 
-                # ── HMM regime update ──────────────────────────────────────
+                # ── HMM regime update (Trigger-based) ──────────────────────
                 regime_feature_buffer.append([loss_val, abs(delta_val), abs(vega_val)])
+                
+                # Dynamic Trigger: Force refit if loss spikes 2x above moving average
+                loss_ma = np.mean(loss_history) if loss_history else loss_val
+                loss_spike = loss_val > (loss_ma * 2.0) and total_steps > REGIME_WINDOW
 
                 if (
-                    total_steps % REGIME_REFIT_INTERVAL == 0
+                    (total_steps % REGIME_REFIT_INTERVAL == 0 or loss_spike)
                     and len(regime_feature_buffer) >= REGIME_WINDOW
                 ):
                     try:
@@ -230,7 +245,14 @@ def run_live_session(data_path: str, batch_size: int = 256, epochs: int = 1000):
                         means = hmm_regime.model.means_[:, 0]
                         sorted_states = np.argsort(means)
                         remap = {int(old): int(new) for new, old in enumerate(sorted_states)}
-                        current_regime_id    = remap[int(labels[-1])]
+                        
+                        new_regime_id = remap[int(labels[-1])]
+                        if new_regime_id != current_regime_id:
+                            msg = f"🚨 TRIGGER: Regime shift detected {REGIME_LABELS.get(current_regime_id)} -> {REGIME_LABELS.get(new_regime_id)}"
+                            print(msg)
+                            telemetry.log_event(msg)
+                            
+                        current_regime_id    = new_regime_id
                         current_regime_label = REGIME_LABELS[current_regime_id]
                     except Exception as hmm_err:
                         telemetry.log_event(f"HMM refit failed at step {total_steps}: {hmm_err}")
