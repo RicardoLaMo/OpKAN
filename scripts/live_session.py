@@ -265,6 +265,10 @@ def run_live_session(data_path: str, batch_size: int = 256, epochs: int = 1000):
                 # ── Telemetry publish ──────────────────────────────────────
                 elapsed = time.time() - start_time
                 tput = int((total_steps * batch_size) / elapsed)
+                
+                # Fetch only new logs from the global store to avoid overwriting
+                current_tel = telemetry.read()
+                
                 telemetry.write({
                     "step":         total_steps,
                     "pde_loss":     loss_val,
@@ -274,7 +278,7 @@ def run_live_session(data_path: str, batch_size: int = 256, epochs: int = 1000):
                     "vega":         vega_val,
                     "throughput":   tput,
                     "regime":       current_regime_label,
-                    "logs":         telemetry.read().get("logs", []),
+                    "logs":         current_tel.get("logs", []),
                     "s1_active":    coordinator._reflex_thread.is_alive() if coordinator._reflex_thread else False,
                     "s2_active":    coordinator._strategic_thread.is_alive() if coordinator._strategic_thread else False,
                     "dual_mode":    True,

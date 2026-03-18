@@ -1,12 +1,13 @@
 import json
 import os
 import time
+import fcntl
 from typing import Dict, Any, List
 
 class TelemetryStore:
     """
-    A lightweight, file-based telemetry store for inter-process communication
-    between the PyTorch training loop and the TUI.
+    A file-based telemetry store with flock-based locking to prevent
+    data loss during concurrent access from training and TUI processes.
     """
     def __init__(self, path: str = "data/telemetry.json"):
         self.path = path
@@ -33,39 +34,60 @@ class TelemetryStore:
             self.write(initial_data)
 
     def write(self, data: Dict[str, Any]):
-        """Writes the current state to the telemetry file."""
+        """Writes data to the telemetry file with an exclusive lock."""
         try:
             with open(self.path, "w") as f:
+                fcntl.flock(f, fcntl.LOCK_EX)
                 json.dump(data, f)
+                fcntl.flock(f, fcntl.LOCK_UN)
         except Exception as e:
             print(f"Telemetry Write Error: {e}")
 
     def read(self) -> Dict[str, Any]:
-        """Reads the current state from the telemetry file with retry logic."""
-        for _ in range(3): # Simple retry
+        """Reads data from the telemetry file with a shared lock and retry logic."""
+        for _ in range(5):
             try:
                 if not os.path.exists(self.path):
                     return {}
                 with open(self.path, "r") as f:
-                    return json.load(f)
+                    fcntl.flock(f, fcntl.LOCK_SH)
+                    content = f.read()
+                    fcntl.flock(f, fcntl.LOCK_UN)
+                    if not content: return {}
+                    return json.loads(content)
             except (json.JSONDecodeError, OSError):
-                time.sleep(0.05)
+                time.sleep(0.02)
         return {}
 
     def log_event(self, message: str):
-        """Appends a log message to the telemetry store."""
+        """
+        Thread-safe log append. Reads, modifies, and writes with an exclusive lock
+        to ensure no logs are lost during concurrent main-loop writes.
+        """
         from datetime import datetime
-        data = self.read()
-        if not data: return
-        
-        logs = data.get("logs", [])
-        logs.append({
-            "timestamp": datetime.now().strftime("%H:%M:%S"),
-            "message": message
-        })
-        # Keep only last 20 logs
-        data["logs"] = logs[-20:]
-        self.write(data)
+        try:
+            # Re-open with r+ for read-modify-write under a single lock
+            with open(self.path, "r+") as f:
+                fcntl.flock(f, fcntl.LOCK_EX)
+                content = f.read()
+                if not content:
+                    data = {}
+                else:
+                    data = json.loads(content)
+                
+                logs = data.get("logs", [])
+                logs.append({
+                    "timestamp": datetime.now().strftime("%H:%M:%S"),
+                    "message": message
+                })
+                data["logs"] = logs[-30:] # Increased buffer
+                
+                f.seek(0)
+                f.truncate()
+                json.dump(data, f)
+                fcntl.flock(f, fcntl.LOCK_UN)
+        except Exception as e:
+            print(f"Telemetry Log Error: {e}")
 
-# Global singleton for the process
+# Global singleton
 telemetry = TelemetryStore()
