@@ -14,8 +14,8 @@ from typing import Dict, Any
 from src.agent.dsl import ReflexDecision, StrategicDecision, EdgeMutation, RegimeThesis
 
 # Paper thresholds (§4.3)
-L1_S1_PRUNE_THRESHOLD = 1.0     # System 1: stagnant B-spline edges (Aggressive for demo)
-L1_S2_PRUNE_THRESHOLD = 0.5     # System 2: deeply dormant edges
+L1_S1_PRUNE_THRESHOLD = 0.2     # System 1: stagnant B-spline edges
+L1_S2_PRUNE_THRESHOLD = 0.1     # System 2: deeply dormant edges
 HMM_TRANSITION_MASS   = 0.30    # off-diagonal sum above this → transition detected
 
 REGIME_LABELS = {0: "Diffusion/Stable", 1: "Vol Expansion", 2: "Jump/Crash"}
@@ -50,8 +50,8 @@ class RuleBasedFallbackAgent:
             and stats.get("l1_norm", 100.0) < L1_S1_PRUNE_THRESHOLD
         ]
         
-        # Limit to 5 prunes per step to maintain gradient flow
-        prunes = candidates[:5]
+        # Limit to 2 prunes per step to maintain gradient flow
+        prunes = candidates[:2]
         
         lr_adjustment = 0.9 if loss_delta > 0.001 else 1.0
 
@@ -109,16 +109,16 @@ class RuleBasedFallbackAgent:
         if regime_id > 0: # 1: EXPANSION, 2: JUMP
             candidates = [
                 eid for eid, s in model_state.items() 
-                if s.get("type") == "bspline" and s.get("l1_norm", 0) < 0.01
+                if s.get("type") == "bspline" and s.get("l1_norm", 0) < 0.2
             ]
-            # Mutate top-2 candidates to avoid over-mutation
-            for edge_id in candidates[:2]:
+            # Mutate top candidate per strategic step
+            for edge_id in candidates[:1]:
                 mutations.append(
                     EdgeMutation(
                         edge_id=edge_id,
                         action="REPLACE",
                         formula="torch.pow(x, 2)",
-                        reasoning=f"High vol regime ({REGIME_LABELS[regime_id]}) detected. Replacing stagnant edge for curvature capturing."
+                        reasoning=f"High vol regime ({REGIME_LABELS.get(regime_id, 'UNKNOWN')}) detected. Replacing stagnant edge for curvature capturing."
                     )
                 )
 

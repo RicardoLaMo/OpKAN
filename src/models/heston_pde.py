@@ -24,6 +24,11 @@ def heston_pde_loss(model: nn.Module,
     # Forward pass
     V = model(torch.cat([S, v, t], dim=1))
     
+    # 🚨 Robustness check: If all paths are pruned, V won't require grad.
+    # Return a high constant loss instead of crashing.
+    if not V.requires_grad:
+        return torch.tensor(1.0, device=S.device, requires_grad=True)
+
     # First derivatives
     dV_dS = torch.autograd.grad(V, S, grad_outputs=torch.ones_like(V), create_graph=True, retain_graph=True)[0]
     dV_dv = torch.autograd.grad(V, v, grad_outputs=torch.ones_like(V), create_graph=True, retain_graph=True)[0]
