@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from typing import Dict, Any, List
 
 class TelemetryStore:
@@ -26,7 +27,8 @@ class TelemetryStore:
                 "logs": [],
                 "s1_active": False,
                 "s2_active": False,
-                "dual_mode": True
+                "dual_mode": True,
+                "active": False
             }
             self.write(initial_data)
 
@@ -39,15 +41,16 @@ class TelemetryStore:
             print(f"Telemetry Write Error: {e}")
 
     def read(self) -> Dict[str, Any]:
-        """Reads the current state from the telemetry file."""
-        try:
-            if not os.path.exists(self.path):
-                return {}
-            with open(self.path, "r") as f:
-                return json.load(f)
-        except Exception as e:
-            # Return empty dict if file is being written to
-            return {}
+        """Reads the current state from the telemetry file with retry logic."""
+        for _ in range(3): # Simple retry
+            try:
+                if not os.path.exists(self.path):
+                    return {}
+                with open(self.path, "r") as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, OSError):
+                time.sleep(0.05)
+        return {}
 
     def log_event(self, message: str):
         """Appends a log message to the telemetry store."""

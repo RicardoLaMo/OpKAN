@@ -189,7 +189,7 @@ class OpKANDashboard(App):
         self.throughput = data.get("throughput", 0)
         self.pde_loss = data.get("pde_loss", 0.0)
         self.option_price = data.get("option_price", 0.0)
-        self.regime = data.get("regime", "WAITING")
+        self.regime = str(data.get("regime", "WAITING")).upper()
         self.delta = data.get("delta", 0.0)
         self.gamma = data.get("gamma", 0.0)
         self.vega = data.get("vega", 0.0)
@@ -214,7 +214,17 @@ class OpKANDashboard(App):
         self.query_one("#card-tput").value = f"{self.throughput:,}"
         self.query_one("#card-loss").value = f"{self.pde_loss:.6f}"
         self.query_one("#card-price").value = f"{self.option_price:.2f}"
-        self.query_one("#card-regime").value = self.regime
+        
+        # Color-code regime card
+        regime_card = self.query_one("#card-regime")
+        regime_card.value = self.regime
+        if "JUMP" in self.regime or "CRASH" in self.regime:
+            regime_card.styles.border = ("double", "red")
+        elif "EXPANSION" in self.regime:
+            regime_card.styles.border = ("double", "yellow")
+        else:
+            regime_card.styles.border = ("double", "green")
+
         self.query_one("#card-delta").value = f"{self.delta:.4f}"
         self.query_one("#card-gamma").value = f"{self.gamma:.4f}"
         self.query_one("#card-vega").value = f"{self.vega:.4f}"
@@ -224,6 +234,7 @@ class OpKANDashboard(App):
         brain.s1_active = data.get("s1_active", False)
         brain.s2_active = data.get("s2_active", False)
         brain.dual_mode = data.get("dual_mode", True)
+        brain.engine_online = True # If we got here and is_active was true
 
         # 5. Handle New Logs
         logs = data.get("logs", [])

@@ -97,16 +97,16 @@ def _make_agent():
     """
     try:
         agent = LiuClawAgent()
-        # Lightweight connectivity probe — will raise immediately on connection refused
-        agent.client.client.chat.completions.create(
-            model="Qwen/Qwen2.5-7B-Instruct",
-            messages=[{"role": "user", "content": "ping"}],
-            max_tokens=1,
-        )
-        print("✅ vLLM server reachable — using real Qwen agents.")
+        # Probe using System 1 interface (minimal tokens)
+        agent.think_fast(0, {}, 0.0)
+        msg = "✅ vLLM server reachable — using real Qwen agents."
+        print(msg)
+        telemetry.log_event(msg)
         return agent
     except Exception as e:
-        print(f"⚠️  vLLM unreachable ({type(e).__name__}): using rule-based fallback agent.")
+        msg = f"⚠️  vLLM unreachable ({type(e).__name__}): using rule-based fallback agent."
+        print(msg)
+        telemetry.log_event(msg)
         return RuleBasedFallbackAgent()
 
 
@@ -292,4 +292,11 @@ def run_live_session(data_path: str, batch_size: int = 256, epochs: int = 1000):
 
 
 if __name__ == "__main__":
-    run_live_session("data/real_market_sim.csv")
+    import argparse
+    parser = argparse.ArgumentParser(description="OpKAN Live Session")
+    parser.add_argument("--data_path", type=str, default="data/real_market_sim.csv")
+    parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--epochs", type=int, default=1000)
+    args = parser.parse_args()
+    
+    run_live_session(args.data_path, args.batch_size, args.epochs)
