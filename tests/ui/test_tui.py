@@ -24,7 +24,8 @@ async def test_app_compose_flow():
         "logs": [{"timestamp": "12:00:00", "message": "Test log"}],
         "s1_active": True,
         "s2_active": False,
-        "dual_mode": True
+        "dual_mode": True,
+        "active": True
     }
     telemetry.write(test_data)
 

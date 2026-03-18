@@ -42,14 +42,17 @@ class BrainStatus(Static):
     s1_active = reactive(False)
     s2_active = reactive(False)
     dual_mode = reactive(True)
+    engine_online = reactive(False)
 
     def render(self) -> Panel:
         s1_style = "bold green" if self.s1_active else "dim white"
         s2_style = "bold yellow" if self.s2_active else "dim white"
         mode_str = "[bold magenta]DUAL-BRAIN ENABLED[/]" if self.dual_mode else "[bold red]BASELINE ONLY[/]"
+        online_str = "[bold green]ONLINE[/]" if self.engine_online else "[bold red]OFFLINE[/]"
         
         table = Table.grid(expand=True)
         table.add_column()
+        table.add_row(Text(f"Engine: {online_str}"))
         table.add_row(Text(mode_str))
         table.add_row(Text("● System 1 (Reflex)", style=s1_style))
         table.add_row(Text("● System 2 (Strategic)", style=s2_style))
@@ -171,6 +174,13 @@ class OpKANDashboard(App):
         """Polls the real telemetry store for 100% live data."""
         data = telemetry.read()
         if not data:
+            self.query_one("#brain-panel").engine_online = False
+            return
+
+        # 0. Check if engine is actually active
+        is_active = data.get("active", False)
+        self.query_one("#brain-panel").engine_online = is_active
+        if not is_active:
             return
 
         current_step = data.get("step", 0)
