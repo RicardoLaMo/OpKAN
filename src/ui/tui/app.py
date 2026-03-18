@@ -21,21 +21,11 @@ from src.engine.telemetry import telemetry
 # ---------------------------------------------------------------------------
 
 class MetricCard(Static):
-    """A small card showing a single metric with business context."""
-    value = reactive("0")
-    
-    def __init__(self, title: str, unit: str = "", subtitle: str = "", **kwargs):
+    """A simple container for metrics, updated via .update() in poll_telemetry."""
+    def __init__(self, title: str, unit: str = "", **kwargs):
         super().__init__(**kwargs)
         self.title = title
         self.unit = unit
-        self.subtitle = subtitle
-
-    def render(self) -> Panel:
-        return Panel(
-            f"[bold cyan]{self.value}[/] {self.unit}\n[dim]{self.subtitle}[/]",
-            title=self.title,
-            border_style="green"
-        )
 
 class BrainStatus(Static):
     """Visualizes the active state of System 1 and System 2."""
@@ -204,15 +194,23 @@ class OpKANDashboard(App):
         for k in self.history: self.history[k] = []
         self.refresh_plots()
 
+    def _draw_waiting_state(self):
+        """Draws placeholders when engine is offline."""
+        for cid in ["#card-regime", "#card-tput", "#card-loss", "#card-price", "#card-delta", "#card-gamma", "#card-vega"]:
+            card = self.query_one(cid)
+            card.update(Panel("[dim]WAITING...[/]", title=card.title, border_style="#333333"))
+
     def poll_telemetry(self) -> None:
         data = telemetry.read()
         if not data:
             self.query_one("#brain-panel").engine_online = False
+            self._draw_waiting_state()
             return
 
         is_active = data.get("active", False)
         self.query_one("#brain-panel").engine_online = is_active
         if not is_active:
+            self._draw_waiting_state()
             return
 
         current_step = data.get("step", 0)
