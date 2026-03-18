@@ -51,12 +51,13 @@ class TelemetryStore:
 
     def log_event(self, message: str):
         """Appends a log message to the telemetry store."""
+        from datetime import datetime
         data = self.read()
         if not data: return
         
         logs = data.get("logs", [])
         logs.append({
-            "timestamp": os.popen("date +%H:%M:%S").read().strip(),
+            "timestamp": datetime.now().strftime("%H:%M:%S"),
             "message": message
         })
         # Keep only last 20 logs

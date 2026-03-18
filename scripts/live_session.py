@@ -87,10 +87,10 @@ def run_live_session(data_path: str, batch_size: int = 4096, epochs: int = 5):
     print(f"📥 Loading data from {data_path}...")
     df = load_opra_data(data_path)
     
-    # Limit to 100k rows for faster initialization in demo mode
-    if len(df) > 100000:
-        print(f"💡 Large dataset detected ({len(df):,} rows). Subsampling to 100,000 rows for real-time demo.")
-        df = df.sample(100000).sort_values('timestamp')
+    # Limit to 10k rows for near-instant initialization in demo mode
+    if len(df) > 10000:
+        print(f"💡 Large dataset detected ({len(df):,} rows). Subsampling to 10,000 rows for lightning-fast demo.")
+        df = df.sample(10000).sort_values('timestamp')
 
     df = clean_and_augment(df)
     dataloader = get_dataloader(df, batch_size=batch_size, shuffle=False)

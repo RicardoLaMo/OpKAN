@@ -52,26 +52,38 @@ def launch():
             env=env,
             stdout=log_file,
             stderr=subprocess.STDOUT,
-            text=True
+            text=True,
+            bufsize=1
         )
 
         # Wait a moment for the engine to initialize and create the telemetry file
-        print("⏳ Waiting for engine initialization...")
-        max_wait = 20
+        print(f"⏳ Waiting for engine initialization (PID: {train_proc.pid})...")
+        max_wait = 30 # Increased timeout for H200 data load
         waited = 0
         while not os.path.exists(tel_path) and waited < max_wait:
             time.sleep(1)
             waited += 1
+            if waited % 5 == 0:
+                print(f"  ... still waiting ({waited}/{max_wait}s) ...")
             if train_proc.poll() is not None:
-                print("❌ Engine failed to start. Check data/engine.log")
+                print("❌ Engine crashed immediately. Last 10 lines of logs:")
+                os.system(f"tail -n 10 {log_path}")
                 return
 
-        print("📺 Starting Terminal Telemetry (Foreground)...")
+        if not os.path.exists(tel_path):
+            print("❌ Telemetry file not created. Engine may be stuck loading data.")
+            print("💡 Check data/engine.log for details.")
+            train_proc.terminate()
+            return
+
+        print("✅ Engine Ready. Launching Terminal Telemetry...")
+        time.sleep(1) # Final settle time
         try:
             # Start the TUI
             subprocess.run(
                 [sys.executable, "src/ui/tui/app.py"],
-                env=env
+                env=env,
+                check=True
             )
         except KeyboardInterrupt:
             print("\n🛑 Shutdown requested.")

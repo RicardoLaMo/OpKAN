@@ -4,6 +4,7 @@
 💡 Large dataset detected (953,347 rows). Subsampling to 100,000 rows for real-time demo.
 /home/wliu23/projects/opkan/src/data/iv_solver.py:11: RuntimeWarning: invalid value encountered in log
   d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
-🔥 Starting Stress Test: 85404 samples | 5 epochs | batch=4096
-[Epoch 1] Step 0/21 | Loss: 231487472.000000
-⚡ Reflexive: Reflexive prune at step 10.
+/home/wliu23/projects/opkan/src/data/iv_solver.py:11: RuntimeWarning: divide by zero encountered in scalar divide
+  d1 = (np.log(S / K) + (r + 0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
+🔥 Starting Stress Test: 85087 samples | 5 epochs | batch=4096
+[Epoch 1] Step 0/21 | Loss: 231472880.000000
