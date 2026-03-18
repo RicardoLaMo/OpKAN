@@ -168,7 +168,7 @@ class OpKANDashboard(App):
             "loss": [], "price": [], "tput": [],
             "delta": [], "vega": []
         }
-        self.last_log_idx = 0
+        self.seen_logs = set()  # Set for deduplication
         self.last_published_step = -1
         self.init_plots()
         self.set_interval(0.1, self.poll_telemetry)
@@ -270,13 +270,27 @@ class OpKANDashboard(App):
         brain.dual_mode = data.get("dual_mode", True)
         brain.engine_online = True
 
-        # ── Logs ──
+        # 5. Handle New Logs (Sliding Window / Buffer Safe)
         logs = data.get("logs", [])
-        if len(logs) > self.last_log_idx:
-            for entry in logs[self.last_log_idx:]:
+        if not logs:
+            return
+
+        # Use the latest timestamp to filter new entries
+        # This is more robust than simple indexing when the store truncates
+        for entry in logs:
+            ts = entry.get("timestamp", "")
+            msg = entry.get("message", "")
+            
+            # Create a unique key for the log entry to avoid duplicates
+            log_key = f"{ts}|{msg}"
+            if log_key not in self.seen_logs:
                 # Bloomberg log style: Cyan timestamp, White text
-                self.query_one("#agent-log").write(f"[cyan]{entry['timestamp']}[/] [white]{entry['message']}[/]")
-            self.last_log_idx = len(logs)
+                self.query_one("#agent-log").write(f"[cyan]{ts}[/] [white]{msg}[/]")
+                self.seen_logs.add(log_key)
+                
+                # Keep memory usage bounded
+                if len(self.seen_logs) > 500:
+                    self.seen_logs.clear() # Clear and restart for simplicity
 
     def refresh_plots(self):
         # Loss Plot
