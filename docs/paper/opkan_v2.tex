@@ -39,8 +39,8 @@
 \newtheorem{remark}{Remark}
 
 % -----------------------------------------------------------------------
-\title{\textbf{OpKAN: Constraining Neural Option Pricing with\\
-Physics, Regime Awareness, and Auditable Language Control}}
+\title{\textbf{Semantic Compiler: Safe LLM Orchestration of Neural Network Topology via Typed DSL}\\[0.5em]
+\large\textit{A Design Pattern for Physics-Constrained Networks, Demonstrated on Real-Time Option Pricing}}
 \author{
   OpKAN Engineering Team\\
   \texttt{github.com/RicardoLaMo/OpKAN}
@@ -52,37 +52,32 @@ Physics, Regime Awareness, and Auditable Language Control}}
 
 % -----------------------------------------------------------------------
 \begin{abstract}
-Options pricing at a modern trading desk is simultaneously a \emph{quantitative} problem
-— produce prices that satisfy no-arbitrage conditions and financial boundary structure —
-and an \emph{informational} problem — incorporate unstructured qualitative signals (macro
-news, research narratives, policy commentary) into the pricing model rapidly and without
-manual re-calibration. Classical approaches address the first problem well but not the
-second; machine learning approaches ingest structured data effectively but have no natural
-channel for unstructured information.
+Giving a large language model real-time structural control over a running neural
+network creates a fundamental interface problem: the LLM produces unstructured text;
+the network demands typed, mathematically consistent structural updates. Naive
+approaches --- evaluating LLM-generated code at runtime --- introduce code injection
+vulnerabilities and leave the model in partially-mutated state on failure. We present
+the \textbf{semantic compiler} design pattern: the LLM's output is a typed,
+Pydantic-validated domain-specific language (DSL) object; formula strings are
+validated by static AST analysis before storage; and mutations are applied atomically
+with \texttt{deepcopy} rollback on failure. These three properties make every
+topology intervention type-safe, vocabulary-restricted, and transactionally reversible.
 
-We present \textbf{OpKAN}, an architecture that addresses both problems through a strict
-separation of concerns across three layers. A \emph{physics-informed Kolmogorov-Arnold
-network} (PI-KAN) solves the Heston stochastic volatility PDE over randomly sampled
-collocation points, enforcing $C^2$ continuity via B-spline edge activations. A
-\emph{Hidden Markov regime detector} provides a temporally stable regime label. A
-\emph{dual-process topology management agent} — which we call the \emph{semantic
-compiler} — translates regime signals and market narratives into typed, Pydantic-validated
-mutation commands that modify the KAN's edge activations in real time.
+We demonstrate the pattern in a demanding testbed: real-time management of a
+physics-informed Kolmogorov-Arnold network (PI-KAN) solving the Heston stochastic
+volatility PDE, where the $C^2$ continuity requirement of the cross-derivative term
+creates a hard mathematical invariant the agent must not violate. A dual-process
+architecture --- 7B reflexive path ($<$50\,ms) and 32B strategic path (200--500\,ms)
+--- operates concurrently with the GPU training loop with zero blocking.
 
-Our preliminary evaluation addresses six research questions. The agent compiles
-market-narrative inputs into valid, executable DSL with 1.00 execution and intent-match
-rates on curated prompts, declining to 0.75 semantic agreement on harder
-document-grounded benchmarks — a gap that frames a concrete normalization research
-problem rather than a conclusion. A regime-conditioned IV-residual hybrid achieves overall
-replay price MAE of 0.9317, with particular strength in transition (1.46) and stress
-(0.42) regimes, while all five financial monotonicity checks pass \emph{only} when an
-explicit semantic controller is layered over the raw learned model — a key finding about
-training objective sufficiency. Sustained training throughput reaches $\mathbf{26{,}300}$
-samples/sec on NVIDIA H200 with zero GPU blocking from the asynchronous LLM decision
-cycle.
-
-These results are exploratory: they demonstrate architectural viability and raise
-specific, tractable open questions rather than establishing final solutions.
+Evaluation against five financial monotonicity checks reveals that PDE residual
+training alone is \emph{insufficient} for regime-ordered behavior --- monotonicity
+requires the semantic controller --- identifying training objective insufficiency as a
+general failure mode in physics-constrained networks under distributional shift.
+Protocol benchmarks achieve 1.00 execution rate and 0.75 semantic agreement against
+human-authored gold DSL, with the residual gap identifying a normalization contract
+problem rather than a comprehension failure. Sustained throughput reaches
+$\mathbf{26{,}300}$\,smp/sec on NVIDIA H200 with zero GPU blocking.
 \end{abstract}
 
 \tableofcontents
@@ -93,111 +88,129 @@ specific, tractable open questions rather than establishing final solutions.
 \label{sec:intro}
 % =====================================================================
 
-\subsection{Two Problems That Are Almost Always Treated as One}
+\subsection{The Interface Problem: LLM-Driven Topology Management}
 
-An options desk pricing a call on silver futures at 9:42 on a morning when the Federal
-Reserve has just announced a larger-than-expected rate hold faces two problems that are
-structurally different but temporally inseparable.
+Consider a neural network solving a physics PDE that is currently training on a GPU.
+An analyst reads a market narrative and wants the network's topology updated to reflect
+the new regime --- specific edges replaced with symbolic functions, others pruned ---
+within seconds, without stopping training. This is a topology management problem, and
+giving an LLM control over it creates a specific interface challenge that has no
+satisfactory solution in existing literature.
 
-The \emph{quantitative problem}: given current spot price $S$, instantaneous variance
-$v$, and time-to-expiry $t$, what option price $V(S,v,t)$ is consistent with the
-no-arbitrage dynamics of the Heston model, the terminal payoff at expiry, and the
-boundary behavior as $S \to 0$ and $S \to \infty$?
+The mismatch is structural. The LLM produces natural language or loosely-structured
+JSON; the network accepts only typed, mathematically valid structural mutations. Three
+requirements must be simultaneously satisfied: (1) \textbf{Type safety}: the mutation
+must conform to a well-defined schema before it reaches the network; (2)
+\textbf{Vocabulary restriction}: any formula proposed must be limited to a safe
+mathematical vocabulary that preserves the network's invariants (in our case, $C^2$
+continuity for Heston PDE evaluation); (3) \textbf{Transactional atomicity}: if a
+mutation batch fails mid-execution, the model must be restored to its pre-mutation
+state.
 
-The \emph{informational problem}: the rate decision is not a number. It is a paragraph.
-The relevant implication — stress, transition, or diffusion regime? — is a semantic
-judgment that must be translated into a volatility surface adjustment within seconds,
-before any market participant who makes this translation more slowly has already traded.
+Naive approaches fail all three simultaneously. Direct evaluation of LLM-generated
+Python via \texttt{eval()} violates type safety (no schema enforcement), vocabulary
+restriction (any Python builtin is accessible), and atomicity (partial mutations
+persist on failure). Neural architecture search \citep{elsken2019neural} solves none
+of these problems: it operates offline before training, receives no natural language
+input, and provides no mechanism for enforcing domain-specific mathematical invariants.
+Prompt-to-price approaches --- where the LLM produces a numerical price directly ---
+are not topology management at all: they bypass the learned model entirely and
+introduce hallucination risk on numerical outputs.
 
-Classical quantitative finance solves the first problem with high fidelity.
-Black-Scholes \citep{black_scholes_1973}, Merton \citep{merton_1973}, and the Heston
-stochastic volatility model \citep{heston1993closed} each provide a mathematically
-principled PDE with consistent Greeks and well-defined boundary conditions. But these
-formulas adapt to new regime information only through manual parameter recalibration —
-a process that takes minutes and requires an analyst's judgment.
+\subsection{The Semantic Compiler Approach}
 
-Machine learning addresses the second problem better. Neural surface models
-\citep{hutchinson_lo_poggio_1994} can embed unstructured features through learned
-representations. Physics-informed neural networks (PINNs) \citep{raissi2019physics}
-enforce the PDE as a soft constraint during training, combining data-driven flexibility
-with structural discipline. But existing PINN architectures typically use standard
-multi-layer perceptrons (MLPs), whose ReLU activations have \emph{zero second
-derivatives} — a critical deficiency for Heston's cross-derivative term
-$\partial^2V/\partial S\partial v$, which requires $C^2$ continuous activations for
-stable evaluation. More fundamentally, no existing architecture provides a principled,
-auditable channel for converting unstructured narrative text into quantitative topology
-updates at latencies compatible with real-time trading.
+The semantic compiler resolves this by positioning the LLM as a compiler: it takes
+unstructured natural language and produces structured, typed output. The
+``compilation'' step enforces three properties before the output ever reaches the
+network:
 
-\subsection{The OpKAN Approach}
+\begin{itemize}[nosep]
+  \item \textbf{Pydantic schema validation at parse time.} The LLM is instructed to
+  produce JSON conforming to a typed schema; any output that fails validation triggers
+  an error-correction retry rather than downstream execution.
 
-OpKAN proposes that the informational problem and the quantitative problem can be solved
-jointly through a strict \emph{separation of concerns} across three layers, each
-optimized for what it does well:
+  \item \textbf{AST allowlist analysis on formula strings.} Any formula string within
+  a command is checked by static analysis against a pre-approved mathematical vocabulary
+  before it is stored. The vocabulary is domain-specific: it encodes the set of
+  functions that are $C^2$ continuous on their natural domains, blocking all other
+  names including module imports and file-system access.
 
-\textbf{Layer 1 — The Physics Layer.} A Kolmogorov-Arnold network
-\citep{liu_etal_2024_kan} trained with a Heston PDE residual loss replaces the MLP
-backbone of conventional PINNs. KAN edge activations are parameterized as cubic
-B-splines, which are genuinely $C^2$ continuous across knot boundaries. The resulting
-model is called a \emph{PI-KAN} (Physics-Informed KAN).
+  \item \textbf{deepcopy snapshot $+$ rollback for transactional integrity.} All
+  affected modules are snapshotted before mutation begins. Any exception during
+  application restores all objects. Either all mutations in a batch succeed or none do.
+\end{itemize}
 
-\textbf{Layer 2 — The Regime Layer.} A Gaussian Hidden Markov model runs walk-forward
-inference over five market microstructure features and emits a temporally stable,
-permutation-normalized regime label (diffusion, vol-expansion, or stress).
+The LLM never produces a price, never modifies weights directly, and never executes
+code. It produces a DSL object. The specialist backend handles execution.
 
-\textbf{Layer 3 — The Semantic Compiler Layer.} A two-speed LLM agent reads the regime
-signal and the learned KAN topology, then issues typed mutation commands that modify the
-network's edge activations. The LLM never produces a price; it produces a structured
-command that a specialist quantitative backend executes. This design makes every agent
-action auditable, replayable, and revocable.
+\subsection{The Testbed: Why Heston/KAN Is a Demanding Domain}
 
-Together, these three layers form OpKAN — a regime-aware, narrative-responsive option
-pricing system where quantitative discipline and linguistic flexibility are composable
-rather than opposed.
+The finance domain is not the primary contribution of this paper, but it is chosen
+as a testbed because it stress-tests the semantic compiler pattern in three ways that
+synthetic benchmarks cannot:
+
+\begin{itemize}[nosep]
+  \item \textbf{$C^2$ continuity constraint.} The agent must propose formulas that are
+  twice-differentiable on the physical domain, not merely syntactically valid Python.
+  This makes the vocabulary layer's mathematical content non-trivial: the allowlist
+  encodes a genuine mathematical property, not just a security policy.
+
+  \item \textbf{PDE geometry reasoning.} Strategic topology decisions require
+  understanding which edge activations are consistent with the Heston differential
+  operator's structure --- a reasoning task that exercises the 32B strategic model's
+  domain comprehension at each decision step.
+
+  \item \textbf{Real-time latency.} A System-2 decision cannot block GPU training,
+  motivating the dual-process architecture. The asynchronous design is not a
+  performance optimization; it is a correctness requirement for any online topology
+  management system.
+\end{itemize}
 
 \subsection{Contributions}
 
 This paper makes the following contributions:
 
 \begin{enumerate}
-  \item \textbf{PI-KAN for Heston pricing.} A complete PI-KAN implementation using
-  genuine Cox--de Boor cubic B-splines, with $C^2$ continuity verified by second-order
-  autograd on the Heston cross-derivative term.
+  \item \textbf{The semantic compiler design pattern} (Typed DSL $+$ AST allowlist
+  $+$ atomic rollback) as a reusable approach for safe LLM-driven topology management
+  of physics-constrained networks.
 
-  \item \textbf{The semantic compiler design pattern.} A Pydantic DSL that makes the
-  LLM's output typed, validated, and finite in vocabulary, with code-injection
-  protection via static AST allowlist analysis.
+  \item \textbf{A dual-process non-blocking architecture} (System~1 reflexive, System~2
+  strategic) with a formal zero-blocking guarantee enforced by bounded queues and
+  non-blocking drain logic.
 
-  \item \textbf{A two-speed topology management agent.} A dual-process agent architecture
-  that separates high-frequency reflexive edge maintenance from low-frequency strategic
-  topology surgery, so that neither process blocks the GPU training loop.
+  \item \textbf{PI-KAN for Heston}: a complete implementation with $C^2$ B-splines
+  via Cox--de Boor recursion, verified by second-order autograd on the Heston
+  cross-derivative term.
 
-  \item \textbf{Atomic mutation rollback.} A snapshot-and-restore mechanism that prevents
-  partially-mutated model state by treating each mutation batch as a transactional unit.
+  \item \textbf{A tiered evaluation framework} spanning protocol validity, paraphrase
+  stability, normalization gap, regime coherence, pricing performance, and engineering
+  headroom --- designed to independently assess each layer of the architecture.
 
-  \item \textbf{A tiered evaluation framework.} Five protocol benchmark tiers and two
-  pricing benchmark tiers that separately assess the LLM compilation layer, the regime
-  control layer, and the quantitative pricing layer.
-
-  \item \textbf{An honest gap analysis.} Explicit identification of what the current
-  architecture does not solve: intrinsic monotonicity, adversarial document robustness,
-  and full human-analyst normalization.
+  \item \textbf{The training objective insufficiency finding}: PDE residual
+  minimization alone does not produce regime-ordered behavior. Monotonicity requires
+  the semantic controller, identifying a general failure mode in physics-constrained
+  networks under distributional shift.
 \end{enumerate}
 
 \subsection{Scope and Positioning}
+\label{sec:scope}
 
 OpKAN is not a pricing formula and does not claim to outperform all existing pricing
-models in all conditions. Its specific claim is narrower: \emph{when regime
-interpretation from unstructured narrative is part of the pricing problem, an
-architecture that combines a physics-grounded learned model with an auditable language
-control layer is more effective than either component alone.} The cross-asset experiments
-in Section~\ref{sec:results} show precisely where this claim holds and where it does not.
+models in all conditions. Its specific claim is that the semantic compiler pattern
+makes LLM-driven topology management safe, auditable, and non-blocking in a domain
+where violations of mathematical invariants have immediate operational consequences.
+The cross-asset experiments in Section~\ref{sec:results} show precisely where the
+architecture's advantages hold and where domain coverage limits them.
 
 \subsection{Paper Organization}
 
 Section~\ref{sec:related} situates the work in the literature.
-Section~\ref{sec:formulation} develops the problem formulation. Section~\ref{sec:arch}
-describes the architecture. Section~\ref{sec:security} addresses correctness and
-security. Section~\ref{sec:experiments} presents the experimental design.
+Section~\ref{sec:formulation} develops the problem formulation.
+Section~\ref{sec:pattern} defines the semantic compiler pattern in the abstract.
+Section~\ref{sec:arch} describes the OpKAN instantiation.
+Section~\ref{sec:security} presents correctness guarantees.
+Section~\ref{sec:experiments} presents the experimental design.
 Section~\ref{sec:results} reports findings. Section~\ref{sec:discussion} interprets them.
 Section~\ref{sec:limfuture} states scope boundaries and outlines future directions.
 Section~\ref{sec:conclusion} concludes.
@@ -207,7 +220,7 @@ Section~\ref{sec:conclusion} concludes.
 \label{sec:related}
 % =====================================================================
 
-OpKAN sits at the intersection of five research areas. We review each with emphasis on
+OpKAN sits at the intersection of six research areas. We review each with emphasis on
 the specific gaps that motivated our design choices.
 
 \subsection{Physics-Informed Learning for Financial PDEs}
@@ -228,6 +241,25 @@ Neural SDEs \citep{kidger2021neural} provide continuous-time neural network mode
 that are related architecturally to our PDE-constrained training but do not enforce
 specific boundary conditions in the Heston sense.
 
+\subsection{Neural Architecture Search and Topology Management}
+
+Neural architecture search (NAS) \citep{elsken2019neural} automates the discovery of
+optimal network topologies through gradient-based \citep{liu2019darts} or evolutionary
+search. The semantic compiler approach is architecturally distinct along three axes.
+First, NAS operates \emph{offline}: it finds a fixed architecture before training begins,
+whereas the topology agent performs \emph{online} surgery on a network that is actively
+training. Second, NAS receives no natural language input; the architecture space is
+explored algorithmically with no semantic grounding. Third, NAS does not enforce
+domain-specific mathematical invariants during search: there is no mechanism to require
+that discovered activations be $C^2$ continuous, or that a proposed edge replacement be
+consistent with PDE geometry.
+
+Continual and lifelong learning \citep{kirkpatrick2017overcoming} addresses a related
+problem --- how to modify a network without catastrophic forgetting --- but does not
+address the interface between natural language and topology mutation. The semantic
+compiler does not manage forgetting; it manages the safety and correctness of the
+mutation itself.
+
 \subsection{Kolmogorov-Arnold Networks}
 
 The KAN architecture \citep{liu_etal_2024_kan} places learnable activation functions on
@@ -238,7 +270,7 @@ combination of $C^2$ B-spline activations and the ability to replace individual 
 with symbolic functions.
 
 MonoKAN \citep{polo_molina_etal_2024_monokan} extends KANs with certified monotonicity
-constraints — the direction OpKAN's architecture should evolve. The current system
+constraints --- the direction OpKAN's architecture should evolve. The current system
 achieves regime-ordered pricing through an external semantic controller, not native
 architectural monotonicity; selective MonoKAN substitution is a stated future direction
 (Section~\ref{sec:limfuture}).
@@ -259,6 +291,22 @@ has operational consequences: a generic tool call can fail silently or produce
 financially inconsistent outputs; a DSL command cannot be applied if it fails schema
 validation.
 
+\subsection{Safe and Sandboxed Code Execution}
+
+The problem of safely executing LLM-generated code has been approached through runtime
+sandboxes (restricted interpreter environments, OS-level isolation) and static analysis
+(type checking, taint tracking). Runtime sandboxes impose significant overhead and
+cannot enforce domain-specific constraints such as $C^2$ continuity. Static type
+checking operates at a coarser granularity than expression-level allowlisting.
+
+The AST allowlist approach in Section~\ref{sec:security} occupies a different point in
+this design space: it is a \emph{compile-time domain grammar restriction} that doubles
+as a mathematical vocabulary constraint. Rather than asking ``is this code safe to
+execute?'' (the sandbox question), it asks ``is this expression within the mathematical
+vocabulary I have pre-approved for $C^2$ network activations?'' The vocabulary
+constraint is tighter than any general-purpose sandbox while being lighter-weight and
+directly enforceable at parse time.
+
 \subsection{Market Regime Detection}
 
 Gaussian HMMs for market regime detection follow Hamilton's foundational work
@@ -272,8 +320,8 @@ feature for separating market regimes in our feature set.
 
 Kahneman's dual-process framework \citep{kahneman2011thinking} has been applied to AI
 agent design in robotics and game-playing. The specific combination of an LLM fast path
-and an LLM slow path operating on the same bounded queues — with both paths producing
-typed, schema-validated outputs that feed the same mutation pipeline — is, to our
+and an LLM slow path operating on the same bounded queues --- with both paths producing
+typed, schema-validated outputs that feed the same mutation pipeline --- is, to our
 knowledge, a novel application to neural network topology management.
 
 % =====================================================================
@@ -325,7 +373,7 @@ architectures for faithful Heston PINN training.
 
 A single trained neural network, even a well-constrained PINN, learns a \emph{fixed}
 mapping from inputs $(S,v,t)$ to prices. The Heston parameters $(\kappa,\theta,\sigma,
-\rho)$ are not constants — they shift with market regime. A single frozen model trained
+\rho)$ are not constants --- they shift with market regime. A single frozen model trained
 on historical data averaged across regimes will systematically underprice
 out-of-the-money options in stress conditions and overprice them in calm conditions.
 The regime problem is a consequence of the non-stationarity of the underlying stochastic
@@ -340,14 +388,110 @@ language. Converting them to structured inputs requires either a human analyst (
 latency, not scalable) or a system that reliably translates unstructured text into
 structured quantitative commands.
 
-This is not primarily a machine learning problem — it is an interface design problem.
+This is not primarily a machine learning problem --- it is an interface design problem.
 The challenge is to define an interface that accepts free-form language as input and
 produces structured, validated quantitative commands as output, so that the downstream
 pricing model never receives unvalidated, potentially inconsistent inputs.
 
-These three requirements — $C^2$ continuous activations, regime-adaptive topology, and a
-structured interface for narrative inputs — jointly motivate the architecture in
-Section~\ref{sec:arch}.
+These three requirements --- $C^2$ continuous activations, regime-adaptive topology, and a
+structured interface for narrative inputs --- jointly motivate the semantic compiler
+pattern in Section~\ref{sec:pattern} and its OpKAN instantiation in Section~\ref{sec:arch}.
+
+% =====================================================================
+\section{The Semantic Compiler Pattern}
+\label{sec:pattern}
+% =====================================================================
+
+Before describing the OpKAN instantiation, we abstract the design pattern it
+implements. The pattern applies to any system where an LLM must modify the structure
+of a running constraint-satisfying computational process. The Heston PI-KAN is one
+instance; the pattern is reusable wherever similar interface requirements arise.
+
+\subsection{The Core Problem: Type Safety at the LLM-Network Boundary}
+
+The fundamental mismatch is representational. An LLM's natural output space is
+unstructured text or loosely-structured JSON; a physics-constrained neural network's
+mutation interface requires typed, validated commands. Three failure modes occur when
+this boundary is not enforced:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Schema failure.} The LLM produces a structurally invalid command
+  (missing required field, wrong type). Without schema validation, this reaches the
+  mutation pipeline and causes a runtime error at an unpredictable depth.
+
+  \item \textbf{Vocabulary failure.} The LLM proposes a formula string containing
+  operations outside the safe mathematical vocabulary (e.g., importing a module,
+  accessing the file system, calling a disallowed function). Without static analysis,
+  this executes with the full privileges of the training process.
+
+  \item \textbf{Atomicity failure.} A mutation batch applies successfully to the
+  first three edges and fails on the fourth. Without rollback, the model is left in
+  a partially-mutated state with no record of which edges were modified.
+\end{enumerate}
+
+The semantic compiler resolves all three.
+
+\subsection{Pattern Definition}
+
+\begin{definition}[Semantic Compiler]
+A \emph{semantic compiler} is an LLM-to-backend interface with three enforcement layers:
+\begin{enumerate}[nosep]
+  \item \textbf{Type layer.} A Pydantic schema defines the grammar of valid commands.
+  The LLM is instructed to produce JSON conforming to this schema; any output that
+  fails schema validation triggers an error-correction retry rather than downstream
+  execution.
+
+  \item \textbf{Vocabulary layer.} For any formula string within a command, a static
+  AST analysis pass verifies membership in a pre-approved vocabulary before the
+  formula is stored. The vocabulary is domain-specific: in OpKAN it encodes the set
+  of functions that are $C^2$ continuous on their natural domains.
+
+  \item \textbf{Transaction layer.} All affected backend objects are snapshotted via
+  \texttt{deepcopy} before mutation begins. Any exception during application restores
+  all objects and logs the failure. Either all mutations in a batch succeed or none do.
+\end{enumerate}
+\end{definition}
+
+Together, these three layers provide a formal guarantee: any command that reaches the
+backend is \emph{well-typed} (passes Pydantic), \emph{vocabulary-safe} (passes AST
+analysis), and \emph{applied atomically} (transactional rollback). The LLM never
+produces a price, never modifies weights directly, and never executes code; it produces
+a DSL object. All execution happens in a typed, validated, reversible backend.
+
+\subsection{Why This Over the Alternatives}
+
+\begin{description}[nosep]
+  \item[Direct LLM output (price or weight update).]
+  The LLM produces a numerical price or a weight delta directly. This removes the
+  interface entirely but eliminates auditability, introduces hallucination risk on
+  numerical outputs, and cannot represent structured topology operations such as
+  edge pruning or symbolic replacement.
+
+  \item[Prompt-to-eval() (LLM generates Python, eval runs it).]
+  The LLM generates arbitrary Python that is evaluated at runtime. This is a code
+  injection vulnerability. A prompt-injected formula string
+  \texttt{\_\_import\_\_("os").system("rm -rf /")} executes with the full privileges
+  of the training process. Runtime sandboxes add overhead without enforcing
+  domain-specific mathematical vocabulary.
+
+  \item[Neural architecture search.]
+  NAS discovers optimal topology offline through gradient or evolutionary search.
+  It does not accept natural language as input, does not operate on a running
+  network, and does not enforce domain constraints during search. NAS and the
+  semantic compiler are complementary, not alternatives: NAS could be used to
+  initialize the topology; the semantic compiler manages it at runtime.
+\end{description}
+
+\subsection{Generalizability}
+
+The semantic compiler pattern is not finance-specific. Any domain where an LLM must
+modify a running constraint-satisfying system --- a chemical synthesis simulator
+where reaction pathways must satisfy thermodynamic constraints, a physical simulation
+where mesh refinements must preserve conservation laws, a robotics controller where
+trajectory modifications must remain within kinematic limits --- presents the same
+three-layer interface problem. The OpKAN instantiation demonstrates viability in a
+domain where the constraints are mathematically sharp and the failure modes are
+operationally consequential.
 
 % =====================================================================
 \section{Architecture}
@@ -456,7 +600,7 @@ $C^2$ continuous}, satisfying the Heston cross-derivative requirement that stand
 cannot meet.
 
 Second, individual edges can be replaced with closed-form symbolic expressions without
-modifying the rest of the network — the topological handle the agent uses to inject
+modifying the rest of the network --- the topological handle the agent uses to inject
 domain knowledge. The resulting network, where some edges are B-splines and some are
 closed-form functions, is referred to as a \textbf{Symbolic PI-KAN}.
 
@@ -519,7 +663,7 @@ here; a quantitative before/after ablation is deferred to future work.
 \subsubsection{Why a Separate Regime Layer}
 
 Why not let the PI-KAN learn regime-sensitivity directly from data? The Heston PDE does
-not change with regime — it is a structural prior on the \emph{shape} of the pricing
+not change with regime --- it is a structural prior on the \emph{shape} of the pricing
 function. What changes with regime is the \emph{parameters} $\kappa$, $\sigma$, $\rho$.
 Conflating these two levels of adaptation would force the PI-KAN to simultaneously
 learn a PDE solution and a parameter estimation procedure, undermining the physics prior.
@@ -556,7 +700,7 @@ The topology management agent, internally named the \emph{LiuClaw} agent, addres
 fundamental interface problem. On one side is unstructured text; on the other is a
 quantitative backend that accepts only typed mutation commands (prune this edge, replace
 that activation with this formula). The agent's job is to translate one representation
-into the other — making it, in the precise sense of the term, a \emph{semantic
+into the other --- making it, in the precise sense of the term, a \emph{semantic
 compiler}.
 
 The crucial design constraint is type-safety at parse time. The LLM is instructed to
@@ -571,7 +715,7 @@ The agent operates on two timescales, motivated by the qualitatively different t
 each handles.
 
 \medskip
-\noindent\textbf{Fast path (System~1 — Reflexive Maintenance).}
+\noindent\textbf{Fast path (System~1 --- Reflexive Maintenance).}
 Every 10 training steps, the training loop places the step index, per-edge L1 activation
 norms, and the recent loss delta into a bounded queue. A background thread dequeues
 this, passes it to a 7B-parameter model (Qwen 2.5-7B), and writes back a
@@ -588,9 +732,9 @@ This path prunes low-norm edges and adjusts the learning rate. Latency must stay
 50\,ms, which is why the smallest available model is used.
 
 \medskip
-\noindent\textbf{Slow path (System~2 — Strategic Surgery).}
-Every 100 training steps, a longer-horizon context — loss trajectory, HMM transition
-probabilities, full KAN state — is placed in a separate bounded queue. A second
+\noindent\textbf{Slow path (System~2 --- Strategic Surgery).}
+Every 100 training steps, a longer-horizon context --- loss trajectory, HMM transition
+probabilities, full KAN state --- is placed in a separate bounded queue. A second
 background thread passes it to a 32B-parameter model (Qwen 2.5-32B) and writes back a
 \texttt{StrategicDecision}:
 
@@ -663,7 +807,7 @@ non-blockingly drains both output queues. If no decisions are pending, training
 continues at full GPU throughput. The GPU never waits on the LLM.
 
 % =====================================================================
-\section{Correctness and Security}
+\section{Correctness Guarantees}
 \label{sec:security}
 % =====================================================================
 
@@ -679,8 +823,8 @@ out = eval(self.expression_str, {"torch": torch}, {"x": x})
 This is trivially exploitable. A formula string
 \texttt{'\ldots\_\_import\_\_("os").system("rm -rf /")'} executes a shell command at
 evaluation time with the full privileges of the training process. Since the formula
-string originates from an LLM — which could be adversarially prompted or subject to
-prompt injection from document inputs — this is a critical vulnerability in any
+string originates from an LLM --- which could be adversarially prompted or subject to
+prompt injection from document inputs --- this is a critical vulnerability in any
 production deployment.
 
 \subsection{AST Allowlist Validation}
@@ -857,7 +1001,7 @@ validity rate, semantic signature match, group consistency. Pricing tiers: price
 regime, IV MAE on the live surface. Engineering: throughput (smp/sec), queue overflow
 count, GPU blocking time (ms).
 
-\textbf{Note on sample sizes.} The protocol benchmarks involve 15–23 prompts and 4
+\textbf{Note on sample sizes.} The protocol benchmarks involve 15--23 prompts and 4
 paraphrase groups. At these sizes, individual results (especially group-level pass rates
 such as 3/4 = 0.75) should be interpreted as directional estimates rather than precise
 measurements. We do not report confidence intervals because bootstrapping 23 binary
@@ -870,7 +1014,7 @@ in future work, not to over-interpret the current point estimates.
 \textbf{Tier 0A (Curated benchmark):} 15 prompts (9 direct, 6 narrative) spanning
 \texttt{OUTLOOK}, \texttt{QUOTE}, \texttt{SURFACE}, and \texttt{SCENARIO} operations,
 written in the style of the system prompt and few-shot examples. This tier establishes
-the \emph{floor of protocol viability} — it does not measure generalization to
+the \emph{floor of protocol viability} --- it does not measure generalization to
 out-of-distribution prompts.
 
 \textbf{Tier 0B (Document-grounded benchmark):} 8 prompts derived from real local
@@ -920,8 +1064,8 @@ Document-grounded (0B) & 8 & 1.00 & 1.00 & 2.747 \\
 
 All 15 curated and all 8 document-grounded prompts produce valid, executable DSL. The
 Tier~0A result (1.00 on in-distribution prompts) establishes viability but not
-generalization. The Tier~0B result — maintaining 1.00 intent-match on prompts derived
-from documents the system prompt was not designed around — is the more meaningful
+generalization. The Tier~0B result --- maintaining 1.00 intent-match on prompts derived
+from documents the system prompt was not designed around --- is the more meaningful
 finding.
 
 The $4\times$ latency increase from direct (0.78\,s) to document-grounded (2.75\,s)
@@ -965,7 +1109,7 @@ three-point strike grid to five points while correctly identifying the regime an
 operation. This is a normalization failure (different structural choice) rather than a
 comprehension failure (wrong intent).
 
-The 0.75 group pass rate — noting the small $n=4$ caveat above — suggests that one in
+The 0.75 group pass rate --- noting the small $n=4$ caveat above --- suggests that one in
 four equivalent analyst queries may produce a behaviorally different but intent-preserving
 command. Closing this gap is a system-prompt engineering problem (Section~\ref{sec:limfuture}), not an architectural one.
 
@@ -1077,11 +1221,11 @@ Model & Price MAE & IV MAE \\ \midrule
 \end{table}
 
 The IV-residual hybrid achieves the best overall replay MAE (0.9317), with particular
-strength in transition (1.46) and stress (0.42) — the conditions where regime-conditioned
+strength in transition (1.46) and stress (0.42) --- the conditions where regime-conditioned
 corrections matter most. In stable conditions, plain Black-Scholes (0.84) is the best
 single model, consistent with the formula being most accurate when market conditions
 match its assumptions. The random-forest baseline is the best IV reconstructor (IV
-MAE 0.0781) but the worst replay pricer overall (6.82) — the canonical pattern of a
+MAE 0.0781) but the worst replay pricer overall (6.82) --- the canonical pattern of a
 model that minimizes in-distribution reconstruction error but generalizes poorly under
 distributional shift.
 
@@ -1180,8 +1324,8 @@ structural argument, not just a post-hoc observation.
 The most important finding is that PDE residual minimization is not a sufficient
 training objective for regime-ordered pricing. The model is not wrong; it minimizes
 what it was trained on. The architectural question this raises is whether the training
-objective can be enriched with regime-ordering terms — e.g., ranking losses on pairs
-of STABLE/STRESS outputs — such that monotonicity becomes intrinsic rather than
+objective can be enriched with regime-ordering terms --- e.g., ranking losses on pairs
+of STABLE/STRESS outputs --- such that monotonicity becomes intrinsic rather than
 requiring an external controller. This is the primary open design question.
 
 \subsection{The Normalization Gap: A Contract Problem}
@@ -1194,7 +1338,7 @@ prompt without architectural change.
 
 \subsection{Cross-Asset Transfer: What Domain Specificity Means}
 
-The cross-asset heterogeneity is not a failure of the architecture — it is a signal
+The cross-asset heterogeneity is not a failure of the architecture --- it is a signal
 about domain fit. The architecture provides value where narrative regime interpretation
 is part of the pricing problem (silver, oil). It provides no value where the pricing
 signal is structural and not in the current feature set (semiconductor earnings,
@@ -1211,7 +1355,7 @@ next step that would address it.
 
 \begin{enumerate}
   \item \textbf{Single quote date for the live benchmark.} The live term-surface benchmark
-  uses one quote date with a cross-sectional split — a sanity check, not a
+  uses one quote date with a cross-sectional split --- a sanity check, not a
   generalization result. \emph{Next step}: obtain multi-date historical OPRA tapes
   (or the public CBOE historical options dataset) and repeat the replay benchmark
   over a rolling 12-month window.
@@ -1240,7 +1384,7 @@ next step that would address it.
 
   \item \textbf{Monotonicity is extrinsic.} All five monotonicity checks pass because
   of the semantic controller, not the raw model. \emph{Next step (a)}: add
-  regime-ordering ranking losses to the training objective — sample pairs $(S,v,t)$
+  regime-ordering ranking losses to the training objective --- sample pairs $(S,v,t)$
   under STABLE and STRESS parameter sets and penalize $\max(0,\, V_\text{STABLE} -
   V_\text{STRESS} + \epsilon)$. \emph{Next step (b)}: selectively replace B-spline
   edges with MonoKAN-style certified monotone variants \citep{polo_molina_etal_2024_monokan}
@@ -1274,34 +1418,34 @@ next step that would address it.
 \label{sec:conclusion}
 % =====================================================================
 
-We have described OpKAN, an architecture that decomposes the options pricing problem
-into three decoupled layers — a physics-informed KAN for quantitative discipline, a
-Hidden Markov regime detector for temporal stability, and a dual-process topology
-management agent for narrative-responsive structural adaptation — and shown that these
-layers can be made simultaneously operative, secure, and quantitatively credible on
-preliminary benchmarks.
+We have presented the semantic compiler as a design pattern for safe, auditable
+LLM-driven topology management of physics-constrained neural networks, and demonstrated
+it in the OpKAN system --- a three-layer architecture for real-time options pricing
+under the Heston stochastic volatility model.
 
-The evidence is exploratory. What it establishes: the semantic compiler interface is
-viable on document-grounded inputs; explicit regime control produces coherent backend
-behavior when the raw learned model does not; the IV-residual hybrid is most effective
-in the transition and stress regimes where regime-sensitive correction matters; and the
-asynchronous LLM integration maintains full GPU throughput with zero blocking.
+The pattern's three enforcement layers --- Pydantic type validation, AST allowlist
+analysis, and atomic mutation rollback --- together provide a boundary at which every
+LLM-driven network modification is type-safe, vocabulary-restricted, and
+transactionally reversible. The dual-process agent (System~1 reflexive, System~2
+strategic) ensures neither LLM path blocks the GPU training loop.
 
-What it does not establish: intrinsic monotonicity from the learned model, robustness
-to adversarial documents, full human-analyst-level normalization, and a generalization
-result over multiple historical dates. These are not merely items for a future-work
-list; they are the specific measurements needed before the architecture claims can be
-strengthened.
+The most consequential finding is not about pricing accuracy: it is that PDE residual
+minimization is \emph{insufficient} as a training objective for regime-ordered
+behavior. The raw model correctly minimizes what it was trained on; regime ordering
+requires the semantic controller. This finding generalizes beyond options pricing to
+any physics-constrained network deployed under distributional shift: the physics prior
+constrains the solution on the training domain, but does not enforce behavioral
+ordering at out-of-distribution query points. Enriching the training objective with
+regime-ordering ranking losses is the most direct path to making this property intrinsic.
 
-The architecture's theoretical contribution is the identification of the right
-abstraction boundary: natural language understanding in the LLM, mathematical constraint
-satisfaction in the physics-informed model, and auditability in the typed DSL. Each
-layer does one thing, does it well, and does not ask the other layers to compensate for
-what it cannot do. The next phase of development is making each layer individually
-better within those boundaries — the learned model through richer training objectives,
-the agent through domain-specific fine-tuning, and the control architecture through
-native monotone embedding. The boundaries remain the same; the capabilities within them
-deepen.
+The semantic compiler boundary --- natural language understanding in the LLM,
+mathematical constraint satisfaction in the physics-informed model, auditability in
+the typed DSL --- is the architectural contribution this paper makes. Each layer does
+one thing well and does not ask the other layers to compensate. The next phase is
+making each layer individually stronger within those boundaries: the learned model
+through ranking losses, the agent through domain fine-tuning on collected trajectories,
+the vocabulary layer through runtime differentiability probing. The boundaries remain;
+the capabilities deepen.
 
 % =====================================================================
 \bibliographystyle{plainnat}

@@ -5,15 +5,15 @@
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
 
-\bibitem[Black and Scholes(1973)]{black_scholes_1973}
-Fischer Black and Myron Scholes.
-\newblock The pricing of options and corporate liabilities.
-\newblock \emph{Journal of Political Economy}, 81\penalty0 (3):\penalty0 637--654, 1973.
-
 \bibitem[B{\"u}hler et~al.(2019)B{\"u}hler, Gonon, Teichmann, and Wood]{buhler2019deep}
 Hans B{\"u}hler, Lukas Gonon, Josef Teichmann, and Ben Wood.
 \newblock Deep hedging.
 \newblock \emph{Quantitative Finance}, 19\penalty0 (8):\penalty0 1271--1291, 2019.
+
+\bibitem[Elsken et~al.(2019)Elsken, Metzen, and Hutter]{elsken2019neural}
+Thomas Elsken, Jan~Hendrik Metzen, and Frank Hutter.
+\newblock Neural architecture search: A survey.
+\newblock \emph{Journal of Machine Learning Research}, 20\penalty0 (55):\penalty0 1--21, 2019.
 
 \bibitem[Hamilton(1989)]{hamilton1989new}
 James~D Hamilton.
@@ -40,11 +40,6 @@ Allen~H Huang, Hui Wang, and Yi~Yang.
 \newblock {FinBERT}: A large language model for extracting information from financial text.
 \newblock \emph{Contemporary Accounting Research}, 40\penalty0 (2):\penalty0 806--841, 2023.
 
-\bibitem[Hutchinson et~al.(1994)Hutchinson, Lo, and Poggio]{hutchinson_lo_poggio_1994}
-James~M Hutchinson, Andrew~W Lo, and Tomaso Poggio.
-\newblock A nonparametric approach to pricing and hedging derivative securities via learning networks.
-\newblock \emph{Journal of Finance}, 49\penalty0 (3):\penalty0 851--889, 1994.
-
 \bibitem[Kahneman(2011)]{kahneman2011thinking}
 Daniel Kahneman.
 \newblock \emph{Thinking, Fast and Slow}.
@@ -55,20 +50,25 @@ Patrick Kidger, James Foster, Xuechen Li, and Terry Lyons.
 \newblock Neural {SDE}s as infinite-dimensional {GAN}s.
 \newblock In \emph{International Conference on Machine Learning}, pages 5453--5463. PMLR, 2021.
 
+\bibitem[Kirkpatrick et~al.(2017)Kirkpatrick, Pascanu, Rabinowitz, Veness, Desjardins, Rusu, Milan, Quan, Ramalho, Grabska-Barwinska, et~al.]{kirkpatrick2017overcoming}
+James Kirkpatrick, Razvan Pascanu, Neil Rabinowitz, Joel Veness, Guillaume Desjardins, Andrei~A Rusu, Kieran Milan, John Quan, Tiago Ramalho, Agnieszka Grabska-Barwinska, et~al.
+\newblock Overcoming catastrophic forgetting in neural networks.
+\newblock \emph{Proceedings of the National Academy of Sciences}, 114\penalty0 (13):\penalty0 3521--3526, 2017.
+
 \bibitem[Kolmogorov(1957)]{kolmogorov1957representation}
 Andrei~Nikolaevich Kolmogorov.
 \newblock On the representation of continuous functions of many variables by superposition of continuous functions of one variable and addition.
 \newblock In \emph{Doklady Akademii Nauk SSSR}, volume 114, pages 953--956. 1957.
 
+\bibitem[Liu et~al.(2019)Liu, Simonyan, and Yang]{liu2019darts}
+Hanxiao Liu, Karen Simonyan, and Yiming Yang.
+\newblock {DARTS}: Differentiable architecture search.
+\newblock In \emph{International Conference on Learning Representations}, 2019.
+
 \bibitem[Liu et~al.(2024)Liu, Wang, Vaidya, Ruehle, Halverson, Solja{\v{c}}i{\'{c}}, Hou, and Tegmark]{liu_etal_2024_kan}
 Ziming Liu, Yixuan Wang, Vaibhav Vaidya, Fabian Ruehle, James Halverson, Marin Solja{\v{c}}i{\'{c}}, Thomas~Y Hou, and Max Tegmark.
 \newblock {KAN}: Kolmogorov-arnold networks.
 \newblock \emph{arXiv preprint arXiv:2404.19756}, 2024.
-
-\bibitem[Merton(1973)]{merton_1973}
-Robert~C Merton.
-\newblock Theory of rational option pricing.
-\newblock \emph{Bell Journal of Economics and Management Science}, 4\penalty0 (1):\penalty0 141--183, 1973.
 
 \bibitem[Polo-Molina et~al.(2024)Polo-Molina, Alfaya, and Portela]{polo_molina_etal_2024_monokan}
 Alejandro Polo-Molina, David Alfaya, and Javier Portela.
